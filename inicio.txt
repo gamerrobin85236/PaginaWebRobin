@@ -1,0 +1,4 @@
+PaginaWebRobin
+==============
+Archivo inicial del proyecto.
+Creado el 2026-11-17 para verificar el acceso de escritura al repositorio.
