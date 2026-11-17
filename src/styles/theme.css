@@ -1,0 +1,24 @@
+/* ==========================================================
+   TEMA DE LA TIENDA — aquí se cambian TODOS los colores.
+   Cada color es un trío "R G B" (sin comas) para que Tailwind
+   pueda usar transparencias (por ejemplo bg-primary/20).
+   ========================================================== */
+:root {
+  /* Fondos */
+  --color-bg: 10 13 10; /* fondo general (casi negro con tinte verde) */
+  --color-surface: 18 24 18; /* tarjetas y barras */
+  --color-surface-2: 27 35 27; /* elementos sobre las tarjetas */
+  --color-line: 44 58 44; /* bordes y líneas */
+
+  /* Marca: verde del logo de Robin, suavizado para no cansar la vista */
+  --color-primary: 74 222 96; /* botones y resaltes */
+  --color-primary-ink: 6 20 8; /* texto sobre fondo verde */
+  --color-accent: 190 242 100; /* detalles secundarios (lima suave) */
+
+  /* Texto */
+  --color-text: 240 247 240;
+  --color-muted: 148 163 148;
+
+  /* Estados */
+  --color-danger: 248 113 113;
+}
