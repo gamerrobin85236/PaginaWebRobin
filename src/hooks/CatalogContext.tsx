@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Product, Section } from '../lib/types'
 import { fetchCatalog } from '../lib/catalogApi'
 import { supabaseConfigured } from '../lib/supabase'
@@ -10,6 +10,7 @@ interface CatalogValue {
   loading: boolean
   error: string | null
   isDemo: boolean
+  refresh: () => void
 }
 
 const CatalogContext = createContext<CatalogValue | null>(null)
@@ -20,36 +21,39 @@ const demoValue: CatalogValue = {
   loading: false,
   error: null,
   isDemo: true,
+  refresh: () => {},
 }
 
+type CatalogData = Omit<CatalogValue, 'refresh'>
+
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [value, setValue] = useState<CatalogValue>(
+  const [data, setData] = useState<CatalogData>(
     supabaseConfigured
       ? { sections: [], products: [], loading: true, error: null, isDemo: false }
       : demoValue,
   )
+  const [tick, setTick] = useState(0)
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
     if (!supabaseConfigured) return
     let cancelled = false
     fetchCatalog()
       .then(({ sections, products }) => {
-        if (!cancelled) {
-          setValue({ sections, products, loading: false, error: null, isDemo: false })
-        }
+        if (!cancelled) setData({ sections, products, loading: false, error: null, isDemo: false })
       })
       .catch((err: unknown) => {
         if (!cancelled) {
           const message = err instanceof Error ? err.message : 'Error desconocido'
-          setValue({ sections: [], products: [], loading: false, error: message, isDemo: false })
+          setData({ sections: [], products: [], loading: false, error: message, isDemo: false })
         }
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [tick])
 
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
+  return <CatalogContext.Provider value={{ ...data, refresh }}>{children}</CatalogContext.Provider>
 }
 
 export function useCatalog(): CatalogValue {
