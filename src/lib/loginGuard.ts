@@ -1,11 +1,11 @@
-// Freno contra adivinar contraseñas desde este navegador: tras 5 intentos fallidos
-// se bloquea el formulario y el tiempo de espera crece (30 s, 1 min, 2 min... hasta 15 min).
+// Freno suave contra adivinar contraseñas: solo tras 10 intentos fallidos seguidos
+// se espera 30 segundos (hasta 2 minutos como máximo). Quien escribe bien su clave nunca lo nota.
 // La protección real contra ataques masivos la da Supabase Auth (límites de intentos) y,
 // recomendado, el CAPTCHA de su panel; esto solo suma una capa más.
 const KEY = 'gr_login_guard'
-const FREE_ATTEMPTS = 5
+const FREE_ATTEMPTS = 10
 const BASE_LOCK_MS = 30_000
-const MAX_LOCK_MS = 15 * 60_000
+const MAX_LOCK_MS = 2 * 60_000
 
 interface GuardState {
   fails: number
