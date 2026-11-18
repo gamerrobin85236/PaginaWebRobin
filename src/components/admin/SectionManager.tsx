@@ -142,71 +142,86 @@ export default function SectionManager({ section, onBack }: Props) {
         <p className="text-sm text-muted mt-6">Todavía no hay productos aquí. Pulsa "Nuevo" para agregar el primero.</p>
       )}
 
-      <ul className="flex flex-col gap-2 mt-4">
+      <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
         {visible.map((p) => (
-          <li key={p.id} className="rounded-xl border border-line bg-surface p-3 flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-bg border border-line overflow-hidden shrink-0">
-                <ProductImage url={p.imageUrl} alt="" width={48} height={48} className="w-full h-full object-cover" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold flex items-center gap-1.5">
-                  {p.featured && <Star className="w-3.5 h-3.5 text-primary shrink-0" />}
-                  <span className="truncate">{p.name}</span>
-                  {p.platform && (
-                    <span className="shrink-0 rounded-md border border-line px-1.5 py-0.5 text-[11px] text-primary">
-                      {p.platform}
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-muted">{details(p, section.kind)}</p>
-              </div>
-              <button onClick={() => setEditing(p)} aria-label="Editar" className="p-2 text-muted hover:text-primary">
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button onClick={() => remove(p)} aria-label="Eliminar" className="p-2 text-muted hover:text-red-400">
-                <Trash2 className="w-4 h-4" />
-              </button>
+          <li key={p.id} className="rounded-2xl border border-line bg-surface overflow-hidden flex flex-col">
+            <div className="relative aspect-square bg-surface2">
+              <ProductImage
+                url={p.imageUrl}
+                alt={p.name}
+                width={300}
+                height={300}
+                className={`w-full h-full object-contain ${p.available ? '' : 'opacity-40'}`}
+              />
+              {p.platform && (
+                <span className="absolute top-2 left-2 rounded-md bg-bg/80 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {p.platform}
+                </span>
+              )}
+              {p.featured && <Star className="absolute top-2 right-2 w-4 h-4 text-primary" />}
+              {!p.available && (
+                <span className="absolute bottom-2 left-2 rounded-md bg-bg/80 px-2 py-0.5 text-[11px] text-muted">
+                  Oculto
+                </span>
+              )}
+              {section.kind === 'physical' && p.stock === 0 && (
+                <span className="absolute bottom-2 right-2 rounded-md bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                  Agotado
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <button
-                onClick={() => toggle(p)}
-                className={`text-xs rounded-full px-2.5 py-1 border ${
-                  p.available ? 'border-primary/60 text-primary' : 'border-line text-muted'
-                }`}
-              >
-                {p.available ? 'Visible' : 'Oculto'}
-              </button>
+            <div className="p-3 flex flex-col gap-2 flex-1">
+              <p className="font-semibold text-sm leading-snug line-clamp-2">{p.name}</p>
+              <p className="text-xs text-muted">{details(p, section.kind)}</p>
 
-              {section.kind === 'digital' && p.fulfillment === 'auto' && (
-                <button
-                  onClick={() => setManagingAccounts(p)}
-                  className="text-xs rounded-full px-3 py-1 border border-primary/60 text-primary"
-                >
-                  Cuentas · P {counts.get(p.id)?.principal ?? 0} · S {counts.get(p.id)?.secundaria ?? 0}
-                </button>
-              )}
-              {section.kind === 'digital' && p.fulfillment !== 'auto' && (
-                <span className="text-xs text-muted">Entrega manual</span>
+              {section.kind === 'digital' && (
+                <>
+                  <button
+                    onClick={() => setManagingAccounts(p)}
+                    className="w-full rounded-xl bg-primary text-primary-ink text-xs font-semibold py-2"
+                  >
+                    Cuentas · P {counts.get(p.id)?.principal ?? 0} · S {counts.get(p.id)?.secundaria ?? 0}
+                  </button>
+                  <p className="text-[11px] text-muted -mt-1">
+                    Entrega {p.fulfillment === 'auto' ? 'automática' : 'manual'}
+                  </p>
+                </>
               )}
 
               {section.kind === 'physical' && (
-                <div className="flex items-center gap-2 text-sm">
-                  <span className={`text-xs ${p.stock === 0 ? 'text-red-400 font-semibold' : 'text-muted'}`}>
-                    {p.stock === 0 ? 'Agotado' : 'Unidades'}
-                  </span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-xs text-muted">Unidades</span>
                   <div className="flex items-center gap-1 bg-bg border border-line rounded-full px-1">
                     <button onClick={() => changeStock(p, (p.stock ?? 0) - 1)} aria-label="Restar" className="p-1.5 hover:text-primary">
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-8 text-center">{p.stock ?? 0}</span>
+                    <span className="w-7 text-center">{p.stock ?? 0}</span>
                     <button onClick={() => changeStock(p, (p.stock ?? 0) + 1)} aria-label="Sumar" className="p-1.5 hover:text-primary">
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
               )}
+
+              <div className="mt-auto flex items-center justify-between pt-1 border-t border-line">
+                <button
+                  onClick={() => toggle(p)}
+                  className={`text-xs rounded-full px-2.5 py-1 border ${
+                    p.available ? 'border-primary/60 text-primary' : 'border-line text-muted'
+                  }`}
+                >
+                  {p.available ? 'Visible' : 'Oculto'}
+                </button>
+                <div className="flex items-center">
+                  <button onClick={() => setEditing(p)} aria-label="Editar" className="p-2 text-muted hover:text-primary">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => remove(p)} aria-label="Eliminar" className="p-2 text-muted hover:text-red-400">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </li>
         ))}
