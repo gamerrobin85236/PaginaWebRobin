@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -8,6 +8,8 @@ import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
 import SectionsAdmin from '../components/admin/SectionsAdmin'
 
+const IDLE_MS = 10 * 60 * 1000 // cierre de sesión por inactividad
+
 type Tab = 'categories' | 'sections'
 
 export default function AdminPage() {
@@ -16,6 +18,25 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('categories')
   const [managing, setManaging] = useState<Section | null>(null)
   const userId = session?.user.id
+  const signOutRef = useRef(signOut)
+  signOutRef.current = signOut
+
+  // Cierra la sesión sola tras 10 minutos sin tocar nada (clic, teclado, toque o desplazamiento).
+  useEffect(() => {
+    if (!userId) return
+    const out = () => void signOutRef.current()
+    let timer = window.setTimeout(out, IDLE_MS)
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(out, IDLE_MS)
+    }
+    const events = ['click', 'keydown', 'touchstart', 'scroll'] as const
+    events.forEach((ev) => window.addEventListener(ev, reset, { passive: true }))
+    return () => {
+      window.clearTimeout(timer)
+      events.forEach((ev) => window.removeEventListener(ev, reset))
+    }
+  }, [userId])
 
   useEffect(() => {
     if (!userId) return
