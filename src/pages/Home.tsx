@@ -4,7 +4,7 @@ import SectionCard from '../components/SectionCard'
 import ProductCard from '../components/ProductCard'
 
 export default function Home() {
-  const { sections, products } = useCatalog()
+  const { sections, products, loading, error } = useCatalog()
   const { addItem, setOpen } = useCartContext()
 
   const featured = products.filter((p) => p.featured)
@@ -14,6 +14,16 @@ export default function Home() {
       <section>
         <h1 className="font-display font-bold text-3xl">¡Bienvenido! 👋</h1>
         <p className="text-muted mt-1">Elige la categoría que deseas explorar.</p>
+
+        {loading && <p className="mt-8 text-sm text-muted">Cargando tienda...</p>}
+        {error && (
+          <p className="mt-8 rounded-xl border border-line bg-surface p-4 text-sm text-muted">
+            No pudimos cargar el catálogo en este momento. Intenta recargar la página en unos minutos.
+          </p>
+        )}
+        {!loading && !error && sections.length === 0 && (
+          <p className="mt-8 text-sm text-muted">Todavía no hay secciones publicadas.</p>
+        )}
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {sections.map((section) => (

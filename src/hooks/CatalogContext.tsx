@@ -1,29 +1,54 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Product, Section } from '../lib/types'
+import { fetchCatalog } from '../lib/catalogApi'
+import { supabaseConfigured } from '../lib/supabase'
 import { DEMO_PRODUCTS, DEMO_SECTIONS } from '../data/demo'
 
 interface CatalogValue {
   sections: Section[]
   products: Product[]
   loading: boolean
+  error: string | null
   isDemo: boolean
 }
 
 const CatalogContext = createContext<CatalogValue | null>(null)
 
-// Por ahora el catálogo sale de datos de ejemplo. En la siguiente fase aquí se
-// leerán las tablas "sections" y "products" de Supabase; el resto de la página
-// no necesita cambios.
+const demoValue: CatalogValue = {
+  sections: DEMO_SECTIONS,
+  products: DEMO_PRODUCTS,
+  loading: false,
+  error: null,
+  isDemo: true,
+}
+
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const value = useMemo<CatalogValue>(
-    () => ({
-      sections: DEMO_SECTIONS.filter((s) => s.active).sort((a, b) => a.position - b.position),
-      products: DEMO_PRODUCTS.filter((p) => p.available).sort((a, b) => a.position - b.position),
-      loading: false,
-      isDemo: true,
-    }),
-    [],
+  const [value, setValue] = useState<CatalogValue>(
+    supabaseConfigured
+      ? { sections: [], products: [], loading: true, error: null, isDemo: false }
+      : demoValue,
   )
+
+  useEffect(() => {
+    if (!supabaseConfigured) return
+    let cancelled = false
+    fetchCatalog()
+      .then(({ sections, products }) => {
+        if (!cancelled) {
+          setValue({ sections, products, loading: false, error: null, isDemo: false })
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Error desconocido'
+          setValue({ sections: [], products: [], loading: false, error: message, isDemo: false })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }
 

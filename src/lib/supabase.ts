@@ -1,12 +1,14 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { PUBLIC_SUPABASE_KEY, PUBLIC_SUPABASE_URL } from '../config/public'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+// Si defines VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY en un archivo .env,
+// se usan esas; si no, se usan los datos públicos de src/config/public.ts.
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || PUBLIC_SUPABASE_URL
+const supabaseKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || PUBLIC_SUPABASE_KEY
 
-export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey)
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseKey)
 
-// Si faltan las variables, la tienda sigue funcionando con datos de ejemplo
-// y no se rompe la página.
 export const supabase: SupabaseClient | null = supabaseConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  ? createClient(supabaseUrl, supabaseKey)
   : null
