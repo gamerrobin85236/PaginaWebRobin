@@ -10,12 +10,13 @@ import NotFound from './NotFound'
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { products, sections } = useCatalog()
+  const { products, sections, loading } = useCatalog()
   const { addItem, setOpen } = useCartContext()
   const [accountType, setAccountType] = useState<AccountType>('principal')
   const [quantity, setQuantity] = useState(1)
 
   const product = products.find((p) => p.slug === slug)
+  if (loading) return <p className="text-sm text-muted">Cargando...</p>
   if (!product) return <NotFound />
 
   const section = sections.find((s) => s.id === product.sectionId)

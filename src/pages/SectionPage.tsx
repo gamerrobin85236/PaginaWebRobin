@@ -8,7 +8,7 @@ import NotFound from './NotFound'
 
 export default function SectionPage() {
   const { slug } = useParams<{ slug: string }>()
-  const { sections, products } = useCatalog()
+  const { sections, products, loading } = useCatalog()
   const { addItem, setOpen } = useCartContext()
   const [platform, setPlatform] = useState<string | null>(null)
 
@@ -22,6 +22,7 @@ export default function SectionPage() {
     [sectionProducts],
   )
 
+  if (loading) return <p className="text-sm text-muted">Cargando...</p>
   if (!section) return <NotFound />
 
   const visible = platform ? sectionProducts.filter((p) => p.platform === platform) : sectionProducts
