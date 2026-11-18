@@ -1,6 +1,6 @@
 import { X, Plus, Minus, Trash2, MessageCircle, ShoppingCart } from 'lucide-react'
 import type { AccountType } from '../lib/types'
-import { getUnitPrice } from '../hooks/useCart'
+import { getUnitPrice, lineKey } from '../hooks/useCart'
 import { useCartContext } from '../hooks/CartContext'
 import { formatPrice } from '../utils/formatPrice'
 import { buildCartWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
@@ -41,7 +41,7 @@ export default function CartDrawer() {
         ) : (
           <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
             {items.map((item) => (
-              <div key={`${item.product.id}-${item.accountType}`} className="flex gap-3">
+              <div key={lineKey(item)} className="flex gap-3">
                 <div className="w-14 h-14 rounded-lg bg-bg border border-line flex items-center justify-center shrink-0 overflow-hidden">
                   {item.product.imageUrl ? (
                     <img
@@ -58,14 +58,17 @@ export default function CartDrawer() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{item.product.name}</p>
                   <p className="text-xs text-muted">
-                    {[item.product.platform, item.product.priceSecondary ? ACCOUNT_LABEL[item.accountType] : null]
+                    {[
+                      item.product.platform,
+                      item.option ? item.option.label : item.product.priceSecondary ? ACCOUNT_LABEL[item.accountType] : null,
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2 bg-bg border border-line rounded-full px-1">
                       <button
-                        onClick={() => updateQuantity(item.product.id, item.accountType, item.quantity - 1)}
+                        onClick={() => updateQuantity(lineKey(item), item.quantity - 1)}
                         className="p-1 hover:text-primary"
                         aria-label="Restar"
                       >
@@ -73,7 +76,7 @@ export default function CartDrawer() {
                       </button>
                       <span className="text-xs w-4 text-center">{item.quantity}</span>
                       <button
-                        onClick={() => updateQuantity(item.product.id, item.accountType, item.quantity + 1)}
+                        onClick={() => updateQuantity(lineKey(item), item.quantity + 1)}
                         className="p-1 hover:text-primary"
                         aria-label="Sumar"
                       >
@@ -87,7 +90,7 @@ export default function CartDrawer() {
                 </div>
 
                 <button
-                  onClick={() => removeItem(item.product.id, item.accountType)}
+                  onClick={() => removeItem(lineKey(item))}
                   className="text-muted hover:text-danger shrink-0"
                   aria-label="Eliminar del carrito"
                 >

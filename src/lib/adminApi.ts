@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
-import type { BuyMode, Product, Section } from './types'
+import { toProduct, toSection, type ProductRow, type SectionRow } from './catalogApi'
+import type { BuyMode, PriceOption, Product, Section, SectionKind } from './types'
 
 function db() {
   if (!supabase) throw new Error('La base de datos no está configurada.')
@@ -9,6 +10,8 @@ function db() {
 function friendly(error: { code?: string; message: string }): string {
   if (error.code === '23505') return 'Ya existe un registro con ese nombre. Cambia el nombre o la plataforma.'
   if (error.code === '42501') return 'No tienes permiso para hacer esto. ¿Tu usuario es administrador?'
+  if (error.code === '42703' || /column .* does not exist/i.test(error.message))
+    return 'Falta actualizar la base de datos (migracion_tipos.sql en Supabase).'
   return error.message
 }
 
@@ -29,32 +32,11 @@ export interface SectionInput {
   slug: string
   description: string
   icon: string
+  kind: SectionKind
   coverUrl?: string
   active: boolean
   position: number
 }
-
-interface SectionRow {
-  id: string
-  slug: string
-  name: string
-  description: string
-  icon: string
-  cover_url: string | null
-  active: boolean
-  position: number
-}
-
-const toSection = (r: SectionRow): Section => ({
-  id: r.id,
-  slug: r.slug,
-  name: r.name,
-  description: r.description,
-  icon: r.icon,
-  coverUrl: r.cover_url ?? undefined,
-  active: r.active,
-  position: r.position,
-})
 
 export async function fetchAdminSections(): Promise<Section[]> {
   const { data, error } = await db().from('sections').select('*').order('position')
@@ -68,6 +50,7 @@ export async function saveSection(input: SectionInput, id?: string): Promise<str
     slug: input.slug,
     description: input.description,
     icon: input.icon,
+    kind: input.kind,
     cover_url: input.coverUrl ?? null,
     active: input.active,
     position: input.position,
@@ -92,46 +75,18 @@ export interface ProductInput {
   price: number
   priceSecondary?: number
   platform?: string
+  stock?: number
+  options: PriceOption[]
   featured: boolean
   available: boolean
   buyMode: BuyMode
   position: number
 }
 
-interface ProductRow {
-  id: string
-  section_id: string
-  name: string
-  slug: string
-  description: string
-  image_url: string | null
-  price: number | string
-  price_secondary: number | string | null
-  platform: string | null
-  featured: boolean
-  available: boolean
-  buy_mode: BuyMode
-  position: number
-}
-
-const toProduct = (r: ProductRow): Product => ({
-  id: r.id,
-  sectionId: r.section_id,
-  name: r.name,
-  slug: r.slug,
-  description: r.description,
-  imageUrl: r.image_url ?? undefined,
-  price: Number(r.price),
-  priceSecondary: r.price_secondary != null ? Number(r.price_secondary) : undefined,
-  platform: r.platform ?? undefined,
-  featured: r.featured,
-  available: r.available,
-  buyMode: r.buy_mode,
-  position: r.position,
-})
-
-export async function fetchAdminProducts(): Promise<Product[]> {
-  const { data, error } = await db().from('products').select('*').order('position')
+export async function fetchAdminProducts(sectionId?: string): Promise<Product[]> {
+  let query = db().from('products').select('*').order('position').order('name')
+  if (sectionId) query = query.eq('section_id', sectionId)
+  const { data, error } = await query
   if (error) throw new Error(friendly(error))
   return (data as ProductRow[]).map(toProduct)
 }
@@ -146,6 +101,8 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<str
     price: input.price,
     price_secondary: input.priceSecondary ?? null,
     platform: input.platform || null,
+    stock: input.stock ?? null,
+    options: input.options,
     featured: input.featured,
     available: input.available,
     buy_mode: input.buyMode,
@@ -158,6 +115,11 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<str
 
 export async function setProductAvailable(id: string, available: boolean): Promise<string | null> {
   const { error } = await db().from('products').update({ available }).eq('id', id)
+  return error ? friendly(error) : null
+}
+
+export async function setProductStock(id: string, stock: number): Promise<string | null> {
+  const { error } = await db().from('products').update({ stock }).eq('id', id)
   return error ? friendly(error) : null
 }
 

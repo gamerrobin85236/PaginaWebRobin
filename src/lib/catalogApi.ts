@@ -1,18 +1,19 @@
 import { supabase } from './supabase'
-import type { BuyMode, Product, Section } from './types'
+import type { BuyMode, PriceOption, Product, Section, SectionKind } from './types'
 
-interface SectionRow {
+export interface SectionRow {
   id: string
   slug: string
   name: string
   description: string
   icon: string
+  kind: SectionKind | null
   cover_url: string | null
   active: boolean
   position: number
 }
 
-interface ProductRow {
+export interface ProductRow {
   id: string
   section_id: string
   name: string
@@ -22,26 +23,29 @@ interface ProductRow {
   price: number | string
   price_secondary: number | string | null
   platform: string | null
+  stock: number | null
+  options: PriceOption[] | null
   featured: boolean
   available: boolean
   buy_mode: BuyMode
   position: number
 }
 
-function toSection(row: SectionRow): Section {
+export function toSection(row: SectionRow): Section {
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
     description: row.description,
     icon: row.icon,
+    kind: row.kind ?? 'generic',
     coverUrl: row.cover_url ?? undefined,
     active: row.active,
     position: row.position,
   }
 }
 
-function toProduct(row: ProductRow): Product {
+export function toProduct(row: ProductRow): Product {
   return {
     id: row.id,
     sectionId: row.section_id,
@@ -52,6 +56,8 @@ function toProduct(row: ProductRow): Product {
     price: Number(row.price),
     priceSecondary: row.price_secondary != null ? Number(row.price_secondary) : undefined,
     platform: row.platform ?? undefined,
+    stock: row.stock ?? undefined,
+    options: (row.options ?? []).map((o) => ({ label: o.label, price: Number(o.price) })),
     featured: row.featured,
     available: row.available,
     buyMode: row.buy_mode,

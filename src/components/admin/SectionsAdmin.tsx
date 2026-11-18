@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
-import type { Section } from '../../lib/types'
+import type { Section, SectionKind } from '../../lib/types'
 import { SECTION_ICONS, sectionIcon } from '../../lib/icons'
 import { deleteSection, fetchAdminSections, saveSection } from '../../lib/adminApi'
+import { KIND_HELP, KIND_LABEL } from '../../lib/kinds'
 import { uploadImage } from '../../lib/storage'
 import { slugify } from '../../utils/slugify'
 import { useCatalog } from '../../hooks/CatalogContext'
@@ -21,6 +22,7 @@ function SectionForm({ section, nextPosition, onDone, onClose }: {
   const [name, setName] = useState(section?.name ?? '')
   const [description, setDescription] = useState(section?.description ?? '')
   const [icon, setIcon] = useState(section?.icon ?? 'gamepad')
+  const [kind, setKind] = useState<SectionKind>(section?.kind ?? 'generic')
   const [position, setPosition] = useState(section?.position ?? nextPosition)
   const [active, setActive] = useState(section?.active ?? true)
   const [file, setFile] = useState<File | null>(null)
@@ -43,7 +45,7 @@ function SectionForm({ section, nextPosition, onDone, onClose }: {
       coverUrl = up.url ?? undefined
     }
     const err = await saveSection(
-      { name: name.trim(), slug, description: description.trim(), icon, coverUrl, active, position },
+      { name: name.trim(), slug, description: description.trim(), icon, kind, coverUrl, active, position },
       section?.id,
     )
     setSaving(false)
@@ -67,6 +69,17 @@ function SectionForm({ section, nextPosition, onDone, onClose }: {
         <div>
           <label className="text-xs text-muted">Descripción corta</label>
           <input className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-muted">Tipo de sección (define el formulario de productos)</label>
+          <select className={inputCls} value={kind} onChange={(e) => setKind(e.target.value as SectionKind)}>
+            {(Object.keys(KIND_LABEL) as SectionKind[]).map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABEL[k]}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted mt-1">{KIND_HELP[kind]}</p>
         </div>
         <div>
           <label className="text-xs text-muted">Icono</label>
@@ -166,7 +179,7 @@ export default function SectionsAdmin() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold truncate">{s.name}</p>
                 <p className="text-xs text-muted truncate">
-                  Orden {s.position} · {s.active ? 'Visible' : 'Oculta'}
+                  {KIND_LABEL[s.kind]} · Orden {s.position} · {s.active ? 'Visible' : 'Oculta'}
                 </p>
               </div>
               <button onClick={() => setEditing(s)} aria-label="Editar" className="p-2 text-muted hover:text-primary">

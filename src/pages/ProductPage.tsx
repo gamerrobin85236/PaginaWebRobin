@@ -14,15 +14,23 @@ export default function ProductPage() {
   const { addItem, setOpen } = useCartContext()
   const [accountType, setAccountType] = useState<AccountType>('principal')
   const [quantity, setQuantity] = useState(1)
+  const [optionIdx, setOptionIdx] = useState(0)
 
   const product = products.find((p) => p.slug === slug)
   if (loading) return <p className="text-sm text-muted">Cargando...</p>
   if (!product) return <NotFound />
 
   const section = sections.find((s) => s.id === product.sectionId)
-  const hasSecondary = Boolean(product.priceSecondary)
-  const unitPrice =
-    accountType === 'secundaria' && product.priceSecondary ? product.priceSecondary : product.price
+  const options = product.options ?? []
+  const option = options[optionIdx] ?? options[0]
+  const soldOut = product.stock === 0
+  const maxQty = product.stock ?? Infinity
+  const hasSecondary = Boolean(product.priceSecondary) && options.length === 0
+  const unitPrice = option
+    ? option.price
+    : accountType === 'secundaria' && product.priceSecondary
+      ? product.priceSecondary
+      : product.price
 
   const optionClass = (selected: boolean) =>
     `flex-1 text-left border rounded-xl px-4 py-3 transition-colors ${
@@ -73,6 +81,24 @@ export default function ProductPage() {
             </div>
           )}
 
+          {options.length > 0 && (
+            <div className="mt-6">
+              <span className="text-xs text-muted">Elige tu opción</span>
+              <div className="grid gap-3 sm:grid-cols-2 mt-2">
+                {options.map((o, i) => (
+                  <button
+                    key={`${o.label}-${i}`}
+                    onClick={() => setOptionIdx(i)}
+                    className={optionClass(options[optionIdx] === o || (!options[optionIdx] && i === 0))}
+                  >
+                    <p className="text-sm font-medium">{o.label}</p>
+                    <p className="text-base font-semibold mt-2">{formatPrice(o.price)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="text-3xl font-display font-bold mt-6">{formatPrice(unitPrice * quantity)}</p>
 
           <div className="flex items-center gap-4 mt-4">
@@ -87,7 +113,7 @@ export default function ProductPage() {
               </button>
               <span className="w-6 text-center text-sm">{quantity}</span>
               <button
-                onClick={() => setQuantity((q) => q + 1)}
+                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
                 aria-label="Sumar"
                 className="p-1.5 hover:text-primary"
               >
@@ -96,22 +122,35 @@ export default function ProductPage() {
             </div>
           </div>
 
+          {soldOut ? (
+            <p className="mt-4 text-sm font-semibold text-danger">Agotado por ahora</p>
+          ) : (
+            product.stock !== undefined && (
+              <p className="mt-3 text-xs text-muted">
+                {product.stock <= 3 ? `¡Últimas ${product.stock} unidades!` : `${product.stock} unidades disponibles`}
+              </p>
+            )
+          )}
+
           <div className="flex flex-col sm:flex-row gap-3 mt-6">
             <button
+              disabled={soldOut}
               onClick={() => {
-                addItem(product, accountType, quantity)
+                addItem(product, accountType, quantity, option)
                 setOpen(true)
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary text-primary font-semibold py-3 text-sm hover:bg-primary/10 transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary text-primary font-semibold py-3 text-sm hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               <ShoppingCart className="w-4 h-4" />
               Agregar al carrito
             </button>
             <a
-              href={buildWhatsAppLink(buildProductWhatsAppMessage(product, accountType, quantity))}
+              href={buildWhatsAppLink(buildProductWhatsAppMessage(product, accountType, quantity, option))}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-ink font-semibold py-3 text-sm hover:brightness-110 transition"
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-ink font-semibold py-3 text-sm hover:brightness-110 transition ${
+                soldOut ? 'opacity-40 pointer-events-none' : ''
+              }`}
             >
               <MessageCircle className="w-4 h-4" />
               Comprar por WhatsApp

@@ -3,15 +3,18 @@ import { Navigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { checkIsAdmin } from '../lib/adminApi'
-import ProductsAdmin from '../components/admin/ProductsAdmin'
+import AdminDashboard from '../components/admin/AdminDashboard'
+import SectionManager from '../components/admin/SectionManager'
+import type { Section } from '../lib/types'
 import SectionsAdmin from '../components/admin/SectionsAdmin'
 
-type Tab = 'products' | 'sections'
+type Tab = 'categories' | 'sections'
 
 export default function AdminPage() {
   const { session, isAuthenticated, loading, signOut } = useAuth()
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
-  const [tab, setTab] = useState<Tab>('products')
+  const [tab, setTab] = useState<Tab>('categories')
+  const [managing, setManaging] = useState<Section | null>(null)
   const userId = session?.user.id
 
   useEffect(() => {
@@ -63,14 +66,26 @@ export default function AdminPage() {
         {logout}
       </div>
       <div className="flex gap-2 my-5">
-        <button className={tabCls('products')} onClick={() => setTab('products')}>
-          Productos
+        <button
+          className={tabCls('categories')}
+          onClick={() => {
+            setTab('categories')
+            setManaging(null)
+          }}
+        >
+          Mis categorías
         </button>
         <button className={tabCls('sections')} onClick={() => setTab('sections')}>
-          Secciones
+          Configurar secciones
         </button>
       </div>
-      {tab === 'products' ? <ProductsAdmin /> : <SectionsAdmin />}
+      {tab === 'sections' ? (
+        <SectionsAdmin />
+      ) : managing ? (
+        <SectionManager section={managing} onBack={() => setManaging(null)} />
+      ) : (
+        <AdminDashboard onOpen={setManaging} onSettings={() => setTab('sections')} />
+      )}
     </div>
   )
 }
