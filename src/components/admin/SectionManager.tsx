@@ -142,85 +142,87 @@ export default function SectionManager({ section, onBack }: Props) {
         <p className="text-sm text-muted mt-6">Todavía no hay productos aquí. Pulsa "Nuevo" para agregar el primero.</p>
       )}
 
-      <ul className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-4">
         {visible.map((p) => (
-          <li key={p.id} className="rounded-2xl border border-line bg-surface overflow-hidden flex flex-col">
-            <div className="relative aspect-square bg-surface2">
-              <ProductImage
-                url={p.imageUrl}
-                alt={p.name}
-                width={300}
-                height={300}
-                className={`w-full h-full object-contain ${p.available ? '' : 'opacity-40'}`}
-              />
-              {p.platform && (
-                <span className="absolute top-2 left-2 rounded-md bg-bg/80 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                  {p.platform}
-                </span>
-              )}
-              {p.featured && <Star className="absolute top-2 right-2 w-4 h-4 text-primary" />}
-              {!p.available && (
-                <span className="absolute bottom-2 left-2 rounded-md bg-bg/80 px-2 py-0.5 text-[11px] text-muted">
-                  Oculto
-                </span>
-              )}
-              {section.kind === 'physical' && p.stock === 0 && (
-                <span className="absolute bottom-2 right-2 rounded-md bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white">
-                  Agotado
-                </span>
-              )}
+          <li key={p.id} className="rounded-xl border border-line bg-surface p-3 flex flex-col gap-3">
+            <div className="flex gap-3">
+              <div className="w-16 h-16 rounded-lg bg-surface2 border border-line overflow-hidden shrink-0">
+                <ProductImage
+                  url={p.imageUrl}
+                  alt=""
+                  width={64}
+                  height={64}
+                  className={`w-full h-full object-cover ${p.available ? '' : 'opacity-40'}`}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm leading-snug line-clamp-2 flex items-start gap-1">
+                  {p.featured && <Star className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />}
+                  <span>{p.name}</span>
+                </p>
+                <p className="text-xs text-muted mt-1">{details(p, section.kind)}</p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  {p.platform && (
+                    <span className="rounded-md border border-line px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                      {p.platform}
+                    </span>
+                  )}
+                  {!p.available && <span className="text-[11px] text-muted">Oculto</span>}
+                  {section.kind === 'physical' && p.stock === 0 && (
+                    <span className="rounded-md bg-red-500 px-1.5 py-0.5 text-[11px] font-bold text-white">Agotado</span>
+                  )}
+                  {section.kind === 'digital' && (
+                    <span className="text-[11px] text-muted">
+                      Entrega {p.fulfillment === 'auto' ? 'automática' : 'manual'}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="p-3 flex flex-col gap-2 flex-1">
-              <p className="font-semibold text-sm leading-snug line-clamp-2">{p.name}</p>
-              <p className="text-xs text-muted">{details(p, section.kind)}</p>
+            {section.kind === 'digital' && (
+              <button
+                onClick={() => setManagingAccounts(p)}
+                className="flex items-center justify-between rounded-lg border border-primary/60 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
+              >
+                <span>Cuentas</span>
+                <span>
+                  Principales {counts.get(p.id)?.principal ?? 0} · Secundarias {counts.get(p.id)?.secundaria ?? 0}
+                </span>
+              </button>
+            )}
 
-              {section.kind === 'digital' && (
-                <>
-                  <button
-                    onClick={() => setManagingAccounts(p)}
-                    className="w-full rounded-xl bg-primary text-primary-ink text-xs font-semibold py-2"
-                  >
-                    Cuentas · P {counts.get(p.id)?.principal ?? 0} · S {counts.get(p.id)?.secundaria ?? 0}
+            {section.kind === 'physical' && (
+              <div className="flex items-center justify-between rounded-lg bg-bg border border-line px-3 py-1.5 text-sm">
+                <span className="text-xs text-muted">Unidades disponibles</span>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => changeStock(p, (p.stock ?? 0) - 1)} aria-label="Restar" className="p-1.5 hover:text-primary">
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <p className="text-[11px] text-muted -mt-1">
-                    Entrega {p.fulfillment === 'auto' ? 'automática' : 'manual'}
-                  </p>
-                </>
-              )}
-
-              {section.kind === 'physical' && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-xs text-muted">Unidades</span>
-                  <div className="flex items-center gap-1 bg-bg border border-line rounded-full px-1">
-                    <button onClick={() => changeStock(p, (p.stock ?? 0) - 1)} aria-label="Restar" className="p-1.5 hover:text-primary">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="w-7 text-center">{p.stock ?? 0}</span>
-                    <button onClick={() => changeStock(p, (p.stock ?? 0) + 1)} aria-label="Sumar" className="p-1.5 hover:text-primary">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <span className="w-7 text-center font-semibold">{p.stock ?? 0}</span>
+                  <button onClick={() => changeStock(p, (p.stock ?? 0) + 1)} aria-label="Sumar" className="p-1.5 hover:text-primary">
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              <div className="mt-auto flex items-center justify-between pt-1 border-t border-line">
-                <button
-                  onClick={() => toggle(p)}
-                  className={`text-xs rounded-full px-2.5 py-1 border ${
-                    p.available ? 'border-primary/60 text-primary' : 'border-line text-muted'
-                  }`}
-                >
-                  {p.available ? 'Visible' : 'Oculto'}
+            <div className="flex items-center justify-between border-t border-line pt-2 -mb-1">
+              <button
+                onClick={() => toggle(p)}
+                className={`text-xs rounded-full px-2.5 py-1 border ${
+                  p.available ? 'border-primary/60 text-primary' : 'border-line text-muted'
+                }`}
+              >
+                {p.available ? 'Visible' : 'Oculto'}
+              </button>
+              <div className="flex items-center">
+                <button onClick={() => setEditing(p)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-muted hover:text-primary">
+                  <Pencil className="w-3.5 h-3.5" /> Editar
                 </button>
-                <div className="flex items-center">
-                  <button onClick={() => setEditing(p)} aria-label="Editar" className="p-2 text-muted hover:text-primary">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => remove(p)} aria-label="Eliminar" className="p-2 text-muted hover:text-red-400">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+                <button onClick={() => remove(p)} aria-label="Eliminar" className="p-2 text-muted hover:text-red-400">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </li>
