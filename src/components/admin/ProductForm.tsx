@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { PriceOption, Product, Section } from '../../lib/types'
+import type { Fulfillment, PriceOption, Product, Section } from '../../lib/types'
 import { saveProduct, type ProductInput } from '../../lib/adminApi'
 import { PLATFORMS } from '../../lib/kinds'
 import { uploadImage } from '../../lib/storage'
@@ -37,6 +37,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const [options, setOptions] = useState<OptionDraft[]>(
     (product?.options ?? []).map((o) => ({ label: o.label, price: String(o.price) })),
   )
+  const [fulfillment, setFulfillment] = useState<Fulfillment>(product?.fulfillment ?? 'manual')
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [available, setAvailable] = useState(product?.available ?? true)
   const [position, setPosition] = useState(product?.position ?? 0)
@@ -105,6 +106,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       priceSecondary: secondary,
       stock: stockNum,
       options: parsedOptions,
+      fulfillment: kind === 'digital' ? fulfillment : 'manual',
       featured,
       available,
       buyMode: product?.buyMode ?? 'whatsapp',
@@ -201,6 +203,32 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
                 <option key={p} value={p} />
               ))}
             </datalist>
+          </div>
+        )}
+
+        {kind === 'digital' && (
+          <div>
+            <label className="text-xs text-muted">¿Cómo se entrega este juego?</label>
+            <div className="grid gap-2 sm:grid-cols-2 mt-1">
+              {(
+                [
+                  ['manual', 'Manual', 'Yo entrego la cuenta (por ejemplo, la compro a otro proveedor).'],
+                  ['auto', 'Automática', 'La página entrega una cuenta de mi inventario. Las cargo en "Cuentas".'],
+                ] as [Fulfillment, string, string][]
+              ).map(([value, title, help]) => (
+                <button
+                  type="button"
+                  key={value}
+                  onClick={() => setFulfillment(value)}
+                  className={`text-left rounded-xl border px-3 py-2.5 ${
+                    fulfillment === value ? 'border-primary bg-primary/10' : 'border-line'
+                  }`}
+                >
+                  <p className="text-sm font-semibold">{title}</p>
+                  <p className="text-xs text-muted mt-0.5">{help}</p>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

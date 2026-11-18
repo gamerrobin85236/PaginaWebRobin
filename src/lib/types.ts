@@ -12,6 +12,9 @@ export interface PriceOption {
   price: number
 }
 
+/** Cómo se entrega un producto digital: Robin lo entrega a mano, o sale solo de su inventario de cuentas. */
+export type Fulfillment = 'auto' | 'manual'
+
 export interface Section {
   id: string
   slug: string
@@ -36,6 +39,8 @@ export interface Product {
   platform?: string // PS5, PS4, Xbox, Switch...
   stock?: number // solo físicos y consolas; 0 = agotado
   options?: PriceOption[] // streaming y suscripciones; price = la opción más barata
+  fulfillment?: Fulfillment // por defecto 'manual'
+  accountStock?: { principal: number; secundaria: number } // solo entrega automática
   featured: boolean
   available: boolean
   buyMode: BuyMode

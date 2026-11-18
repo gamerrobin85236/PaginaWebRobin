@@ -1,10 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Minus, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import type { Product, Section } from '../../lib/types'
-import { deleteProduct, fetchAdminProducts, setProductAvailable, setProductStock } from '../../lib/adminApi'
+import {
+  deleteProduct,
+  fetchAccountCounts,
+  fetchAdminProducts,
+  setProductAvailable,
+  setProductStock,
+} from '../../lib/adminApi'
 import { KIND_HELP, KIND_LABEL } from '../../lib/kinds'
 import { useCatalog } from '../../hooks/CatalogContext'
 import { formatPrice } from '../../utils/formatPrice'
+import AccountsModal from './AccountsModal'
 import ProductForm from './ProductForm'
 import ProductImage from '../ProductImage'
 
@@ -31,8 +38,11 @@ export default function SectionManager({ section, onBack }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Product | null | undefined>(undefined)
+  const [managingAccounts, setManagingAccounts] = useState<Product | null>(null)
+  const [counts, setCounts] = useState<Map<string, { principal: number; secundaria: number }>>(new Map())
 
   const load = useCallback(() => {
+    fetchAccountCounts().then(setCounts)
     fetchAdminProducts(section.id)
       .then((p) => {
         setProducts(p)
@@ -169,6 +179,18 @@ export default function SectionManager({ section, onBack }: Props) {
                 {p.available ? 'Visible' : 'Oculto'}
               </button>
 
+              {section.kind === 'digital' && p.fulfillment === 'auto' && (
+                <button
+                  onClick={() => setManagingAccounts(p)}
+                  className="text-xs rounded-full px-3 py-1 border border-primary/60 text-primary"
+                >
+                  Cuentas · P {counts.get(p.id)?.principal ?? 0} · S {counts.get(p.id)?.secundaria ?? 0}
+                </button>
+              )}
+              {section.kind === 'digital' && p.fulfillment !== 'auto' && (
+                <span className="text-xs text-muted">Entrega manual</span>
+              )}
+
               {section.kind === 'physical' && (
                 <div className="flex items-center gap-2 text-sm">
                   <span className={`text-xs ${p.stock === 0 ? 'text-red-400 font-semibold' : 'text-muted'}`}>
@@ -189,6 +211,16 @@ export default function SectionManager({ section, onBack }: Props) {
           </li>
         ))}
       </ul>
+
+      {managingAccounts && (
+        <AccountsModal
+          product={managingAccounts}
+          onClose={() => {
+            setManagingAccounts(null)
+            changed()
+          }}
+        />
+      )}
 
       {editing !== undefined && (
         <ProductForm

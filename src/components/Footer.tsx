@@ -1,5 +1,6 @@
 import { Instagram, Facebook, MapPin, Phone } from 'lucide-react'
 import { STORE_CONFIG } from '../config/store'
+import PaymentMethods from './PaymentMethods'
 
 export default function Footer() {
   return (
@@ -44,6 +45,7 @@ export default function Footer() {
           </div>
         </div>
       </div>
+      <PaymentMethods />
       <p className="text-center text-xs text-muted pb-8">
         © {new Date().getFullYear()} {STORE_CONFIG.name}. Todos los derechos reservados.
       </p>

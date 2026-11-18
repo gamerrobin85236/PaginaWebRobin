@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { toProduct, toSection, type ProductRow, type SectionRow } from './catalogApi'
-import type { BuyMode, PriceOption, Product, Section, SectionKind } from './types'
+import type { AccountType, BuyMode, Fulfillment, PriceOption, Product, Section, SectionKind } from './types'
 
 function db() {
   if (!supabase) throw new Error('La base de datos no está configurada.')
@@ -77,6 +77,7 @@ export interface ProductInput {
   platform?: string
   stock?: number
   options: PriceOption[]
+  fulfillment: Fulfillment
   featured: boolean
   available: boolean
   buyMode: BuyMode
@@ -103,6 +104,7 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<str
     platform: input.platform || null,
     stock: input.stock ?? null,
     options: input.options,
+    fulfillment: input.fulfillment,
     featured: input.featured,
     available: input.available,
     buy_mode: input.buyMode,
@@ -125,5 +127,87 @@ export async function setProductStock(id: string, stock: number): Promise<string
 
 export async function deleteProduct(id: string): Promise<string | null> {
   const { error } = await db().from('products').delete().eq('id', id)
+  return error ? friendly(error) : null
+}
+
+// ---------- Inventario de cuentas (solo administrador) ----------
+export interface GameAccount {
+  id: string
+  productId: string
+  type: AccountType
+  login: string
+  secret: string
+  notes: string
+  status: 'available' | 'sold'
+  soldAt?: string
+}
+
+interface AccountRow {
+  id: string
+  product_id: string
+  account_type: AccountType
+  login: string
+  secret: string
+  notes: string
+  status: 'available' | 'sold'
+  sold_at: string | null
+}
+
+const toAccount = (r: AccountRow): GameAccount => ({
+  id: r.id,
+  productId: r.product_id,
+  type: r.account_type,
+  login: r.login,
+  secret: r.secret,
+  notes: r.notes,
+  status: r.status,
+  soldAt: r.sold_at ?? undefined,
+})
+
+export async function fetchAccounts(productId: string): Promise<GameAccount[]> {
+  const { data, error } = await db()
+    .from('game_accounts')
+    .select('*')
+    .eq('product_id', productId)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(friendly(error))
+  return (data as AccountRow[]).map(toAccount)
+}
+
+/** Cuántas cuentas disponibles hay por producto: { productId: { principal, secundaria } } */
+export async function fetchAccountCounts(): Promise<Map<string, { principal: number; secundaria: number }>> {
+  const map = new Map<string, { principal: number; secundaria: number }>()
+  const { data, error } = await db().from('game_accounts').select('product_id, account_type').eq('status', 'available')
+  if (error || !data) return map
+  for (const r of data as { product_id: string; account_type: AccountType }[]) {
+    const cur = map.get(r.product_id) ?? { principal: 0, secundaria: 0 }
+    cur[r.account_type]++
+    map.set(r.product_id, cur)
+  }
+  return map
+}
+
+export async function addAccounts(
+  productId: string,
+  type: AccountType,
+  rows: { login: string; secret: string }[],
+  notes: string,
+): Promise<string | null> {
+  const { error } = await db()
+    .from('game_accounts')
+    .insert(rows.map((r) => ({ product_id: productId, account_type: type, login: r.login, secret: r.secret, notes })))
+  return error ? friendly(error) : null
+}
+
+export async function markAccountSold(id: string): Promise<string | null> {
+  const { error } = await db()
+    .from('game_accounts')
+    .update({ status: 'sold', sold_at: new Date().toISOString() })
+    .eq('id', id)
+  return error ? friendly(error) : null
+}
+
+export async function deleteAccount(id: string): Promise<string | null> {
+  const { error } = await db().from('game_accounts').delete().eq('id', id)
   return error ? friendly(error) : null
 }
