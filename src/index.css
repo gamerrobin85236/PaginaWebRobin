@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap');
 @import './styles/theme.css';
 
 @tailwind base;
@@ -20,4 +19,22 @@ html {
 }
 .scroll-row::-webkit-scrollbar {
   display: none;
+}
+
+/* Las tarjetas fuera de pantalla no se pintan hasta que se acercan: scroll fluido con cientos de productos */
+.card-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
+/* Quien prefiere menos movimiento (o tiene un equipo lento) no recibe animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

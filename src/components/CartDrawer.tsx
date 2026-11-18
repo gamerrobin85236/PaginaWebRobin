@@ -2,6 +2,7 @@ import { X, Plus, Minus, Trash2, MessageCircle, ShoppingCart } from 'lucide-reac
 import type { AccountType } from '../lib/types'
 import { getUnitPrice, lineKey } from '../hooks/useCart'
 import { useCartContext } from '../hooks/CartContext'
+import ProductImage from './ProductImage'
 import { formatPrice } from '../utils/formatPrice'
 import { buildCartWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
 
@@ -44,12 +45,7 @@ export default function CartDrawer() {
               <div key={lineKey(item)} className="flex gap-3">
                 <div className="w-14 h-14 rounded-lg bg-bg border border-line flex items-center justify-center shrink-0 overflow-hidden">
                   {item.product.imageUrl ? (
-                    <img
-                      src={item.product.imageUrl}
-                      alt={item.product.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
+                    <ProductImage url={item.product.imageUrl} alt={item.product.name} width={56} height={56} className="w-full h-full object-cover" />
                   ) : (
                     <ShoppingCart className="w-5 h-5 text-muted" />
                   )}

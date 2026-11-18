@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCatalog } from '../hooks/CatalogContext'
 import { useCartContext } from '../hooks/CartContext'
@@ -10,7 +11,10 @@ export default function SearchPage() {
   const { products } = useCatalog()
   const { addItem, setOpen } = useCartContext()
 
-  const results = products.filter((p) => matchesSearch(`${p.name} ${p.platform ?? ''}`, query))
+  const results = useMemo(
+    () => products.filter((p) => matchesSearch(`${p.name} ${p.platform ?? ''}`, query)),
+    [products, query],
+  )
 
   return (
     <div>

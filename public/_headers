@@ -1,0 +1,17 @@
+# Cabeceras de seguridad y caché (Cloudflare las aplica a todo el sitio).
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+# Archivos con huella en el nombre: no cambian nunca, el navegador los guarda un año.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# La página principal siempre se revisa para tomar la versión nueva.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate

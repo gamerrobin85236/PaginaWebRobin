@@ -3,28 +3,31 @@ import { Plus, Package } from 'lucide-react'
 import type { Product } from '../lib/types'
 import { formatPrice } from '../utils/formatPrice'
 import { hasOptions, isSoldOut } from '../utils/pricing'
+import ProductImage from './ProductImage'
 
 interface ProductCardProps {
   product: Product
   onAdd: (product: Product) => void
   className?: string
+  eager?: boolean
 }
 
-export default function ProductCard({ product, onAdd, className = '' }: ProductCardProps) {
+export default function ProductCard({ product, onAdd, className = '', eager = false }: ProductCardProps) {
   const withOptions = hasOptions(product)
   const soldOut = isSoldOut(product)
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl bg-surface border border-line hover:border-primary/50 transition-colors ${className}`}
+      className={`card-cv group relative flex flex-col overflow-hidden rounded-2xl bg-surface border border-line hover:border-primary/50 transition-colors ${className}`}
     >
       <Link to={`/producto/${product.slug}`} className="flex flex-col flex-1">
         <div className="relative h-44 bg-surface2 flex items-center justify-center overflow-hidden">
           {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
+            <ProductImage
+              url={product.imageUrl}
               alt={product.name}
-              loading="lazy"
-              decoding="async"
+              eager={eager}
+              width={300}
+              height={176}
               className="w-full h-full object-contain"
             />
           ) : (

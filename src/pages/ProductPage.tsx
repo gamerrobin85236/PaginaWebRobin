@@ -6,6 +6,7 @@ import { useCartContext } from '../hooks/CartContext'
 import type { AccountType } from '../lib/types'
 import { formatPrice } from '../utils/formatPrice'
 import { buildProductWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
+import ProductImage from '../components/ProductImage'
 import NotFound from './NotFound'
 
 export default function ProductPage() {
@@ -50,7 +51,7 @@ export default function ProductPage() {
       <div className="mt-5 grid gap-8 md:grid-cols-2">
         <div className="rounded-2xl bg-surface border border-line flex items-center justify-center min-h-[280px] overflow-hidden">
           {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="w-full max-h-[480px] object-contain" />
+            <ProductImage url={product.imageUrl} alt={product.name} thumb={false} eager className="w-full max-h-[480px] object-contain" />
           ) : (
             <Package className="w-20 h-20 text-muted/40" />
           )}

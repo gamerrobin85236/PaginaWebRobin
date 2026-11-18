@@ -8,6 +8,8 @@ import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
 import SectionsAdmin from '../components/admin/SectionsAdmin'
 
+const IDLE_MS = 30 * 60 * 1000
+
 type Tab = 'categories' | 'sections'
 
 export default function AdminPage() {
@@ -16,6 +18,22 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('categories')
   const [managing, setManaging] = useState<Section | null>(null)
   const userId = session?.user.id
+
+  // Cierra la sesión sola tras 30 minutos sin actividad (por si Robin deja el panel abierto).
+  useEffect(() => {
+    if (!userId) return
+    let timer = window.setTimeout(signOut, IDLE_MS)
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(signOut, IDLE_MS)
+    }
+    const events = ['click', 'keydown', 'touchstart', 'scroll'] as const
+    events.forEach((ev) => window.addEventListener(ev, reset, { passive: true }))
+    return () => {
+      window.clearTimeout(timer)
+      events.forEach((ev) => window.removeEventListener(ev, reset))
+    }
+  }, [userId, signOut])
 
   useEffect(() => {
     if (!userId) return

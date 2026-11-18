@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useCatalog } from '../hooks/CatalogContext'
 import { useCartContext } from '../hooks/CartContext'
 import SectionCard from '../components/SectionCard'
@@ -7,7 +8,12 @@ export default function Home() {
   const { sections, products, loading, error } = useCatalog()
   const { addItem, setOpen } = useCartContext()
 
-  const featured = products.filter((p) => p.featured)
+  const featured = useMemo(() => products.filter((p) => p.featured), [products])
+  const counts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const p of products) map.set(p.sectionId, (map.get(p.sectionId) ?? 0) + 1)
+    return map
+  }, [products])
 
   return (
     <div className="flex flex-col gap-12">
@@ -30,7 +36,7 @@ export default function Home() {
             <SectionCard
               key={section.id}
               section={section}
-              productCount={products.filter((p) => p.sectionId === section.id).length}
+              productCount={counts.get(section.id) ?? 0}
             />
           ))}
         </div>

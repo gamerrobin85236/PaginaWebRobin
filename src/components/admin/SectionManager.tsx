@@ -6,6 +6,7 @@ import { KIND_HELP, KIND_LABEL } from '../../lib/kinds'
 import { useCatalog } from '../../hooks/CatalogContext'
 import { formatPrice } from '../../utils/formatPrice'
 import ProductForm from './ProductForm'
+import ProductImage from '../ProductImage'
 
 interface Props {
   section: Section
@@ -136,7 +137,7 @@ export default function SectionManager({ section, onBack }: Props) {
           <li key={p.id} className="rounded-xl border border-line bg-surface p-3 flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-bg border border-line overflow-hidden shrink-0">
-                {p.imageUrl && <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />}
+                <ProductImage url={p.imageUrl} alt="" width={48} height={48} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold flex items-center gap-1.5">

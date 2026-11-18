@@ -1,8 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Lock, Mail } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { supabaseConfigured } from '../lib/supabase'
+import { lockedSeconds, registerFailure, registerSuccess } from '../lib/loginGuard'
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -11,19 +14,38 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [locked, setLocked] = useState(lockedSeconds)
+
+  // Cuenta regresiva mientras el formulario está bloqueado por intentos fallidos.
+  useEffect(() => {
+    if (locked <= 0) return
+    const timer = setInterval(() => setLocked(lockedSeconds()), 1000)
+    return () => clearInterval(timer)
+  }, [locked])
 
   if (!loading && isAuthenticated) return <Navigate to="/admin" replace />
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
-    setError(null)
-    const result = await signIn(email, password)
-    setSubmitting(false)
-    if (result.error) {
+    if (lockedSeconds() > 0) return setLocked(lockedSeconds())
+    const cleanEmail = email.trim().toLowerCase()
+    if (cleanEmail.length > 254 || !EMAIL_RE.test(cleanEmail) || password.length === 0 || password.length > 128) {
       setError('Correo o contraseña incorrectos.')
       return
     }
+    setSubmitting(true)
+    setError(null)
+    const result = await signIn(cleanEmail, password)
+    setSubmitting(false)
+    if (result.error) {
+      registerFailure()
+      setLocked(lockedSeconds())
+      // Mensaje igual para "correo no existe" y "contraseña mala": no revela qué correos son válidos.
+      setError('Correo o contraseña incorrectos.')
+      setPassword('')
+      return
+    }
+    registerSuccess()
     navigate('/admin')
   }
 
@@ -47,6 +69,8 @@ export default function LoginPage() {
           <input
             type="email"
             required
+            maxLength={254}
+            spellCheck={false}
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -59,6 +83,7 @@ export default function LoginPage() {
           <input
             type="password"
             required
+            maxLength={128}
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -67,9 +92,14 @@ export default function LoginPage() {
           />
         </div>
         {error && <p className="text-sm text-danger">{error}</p>}
+        {locked > 0 && (
+          <p className="text-sm text-muted">
+            Demasiados intentos. Por seguridad, espera {locked >= 60 ? `${Math.ceil(locked / 60)} min` : `${locked} s`} para volver a intentar.
+          </p>
+        )}
         <button
           type="submit"
-          disabled={submitting || !supabaseConfigured}
+          disabled={submitting || locked > 0 || !supabaseConfigured}
           className="rounded-xl bg-primary text-primary-ink font-semibold py-3 text-sm hover:brightness-110 disabled:opacity-50 transition"
         >
           {submitting ? 'Entrando...' : 'Entrar'}
