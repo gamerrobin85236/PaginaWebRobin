@@ -249,3 +249,8 @@ create or replace view public.account_availability as
   where status = 'available'
   group by product_id, account_type;
 grant select on public.account_availability to anon, authenticated;
+
+-- Código de verificación de la cuenta (PlayStation lo pide al iniciar sesión).
+alter table public.game_accounts add column if not exists verification_code text not null default '';
+alter table public.game_accounts drop constraint if exists game_accounts_code_limit;
+alter table public.game_accounts add constraint game_accounts_code_limit check (char_length(verification_code) <= 500);

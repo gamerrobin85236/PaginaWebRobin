@@ -1,5 +1,6 @@
 // Datos generales de la tienda. Edita aquí nombre, contacto y redes.
 export const STORE_CONFIG = {
+  developer: 'CorApps', // empresa que desarrolló la página
   name: 'Gamer Robin',
   tagline: 'Tienda oficial · Santa Rosa de Cabal',
   whatsappNumber: '573103750355', // sin "+" ni espacios

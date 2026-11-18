@@ -138,6 +138,7 @@ export interface GameAccount {
   login: string
   secret: string
   notes: string
+  verificationCode: string
   status: 'available' | 'sold'
   soldAt?: string
 }
@@ -149,6 +150,7 @@ interface AccountRow {
   login: string
   secret: string
   notes: string
+  verification_code: string | null
   status: 'available' | 'sold'
   sold_at: string | null
 }
@@ -160,6 +162,7 @@ const toAccount = (r: AccountRow): GameAccount => ({
   login: r.login,
   secret: r.secret,
   notes: r.notes,
+  verificationCode: r.verification_code ?? '',
   status: r.status,
   soldAt: r.sold_at ?? undefined,
 })
@@ -190,12 +193,12 @@ export async function fetchAccountCounts(): Promise<Map<string, { principal: num
 export async function addAccounts(
   productId: string,
   type: AccountType,
-  rows: { login: string; secret: string }[],
+  rows: { login: string; secret: string; code: string }[],
   notes: string,
 ): Promise<string | null> {
   const { error } = await db()
     .from('game_accounts')
-    .insert(rows.map((r) => ({ product_id: productId, account_type: type, login: r.login, secret: r.secret, notes })))
+    .insert(rows.map((r) => ({ product_id: productId, account_type: type, login: r.login, secret: r.secret, verification_code: r.code, notes })))
   return error ? friendly(error) : null
 }
 
@@ -209,5 +212,10 @@ export async function markAccountSold(id: string): Promise<string | null> {
 
 export async function deleteAccount(id: string): Promise<string | null> {
   const { error } = await db().from('game_accounts').delete().eq('id', id)
+  return error ? friendly(error) : null
+}
+
+export async function updateAccountCode(id: string, code: string): Promise<string | null> {
+  const { error } = await db().from('game_accounts').update({ verification_code: code }).eq('id', id)
   return error ? friendly(error) : null
 }

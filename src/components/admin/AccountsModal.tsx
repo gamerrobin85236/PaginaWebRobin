@@ -1,25 +1,37 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import type { AccountType, Product } from '../../lib/types'
-import { addAccounts, deleteAccount, fetchAccounts, markAccountSold, type GameAccount } from '../../lib/adminApi'
+import { addAccounts, deleteAccount, fetchAccounts, markAccountSold, updateAccountCode, type GameAccount } from '../../lib/adminApi'
 import Modal from './Modal'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
 const MAX_LINES = 200
 
-/** Cada línea: correo:clave (o correo|clave). Se parte en el primer separador. */
-function parseLines(text: string): { rows: { login: string; secret: string }[]; bad: number } {
-  const rows: { login: string; secret: string }[] = []
+/**
+ * Cada línea es una cuenta:
+ *   correo:clave                    (sin código)
+ *   correo|clave|código             (con código de verificación; usa "|" para separar)
+ */
+function parseLines(text: string): { rows: { login: string; secret: string; code: string }[]; bad: number } {
+  const rows: { login: string; secret: string; code: string }[] = []
   let bad = 0
   for (const raw of text.split('\n')) {
     const line = raw.trim()
     if (!line) continue
-    const sep = line.includes('|') ? '|' : line.includes('\t') ? '\t' : ':'
-    const idx = line.indexOf(sep)
-    const login = idx > 0 ? line.slice(0, idx).trim() : ''
-    const secret = idx > 0 ? line.slice(idx + 1).trim() : ''
-    if (login && secret) rows.push({ login, secret })
+    let login = ''
+    let secret = ''
+    let code = ''
+    if (line.includes('|')) {
+      const parts = line.split('|').map((x) => x.trim())
+      ;[login = '', secret = '', code = ''] = parts
+    } else {
+      const sep = line.includes('\t') ? '\t' : ':'
+      const idx = line.indexOf(sep)
+      login = idx > 0 ? line.slice(0, idx).trim() : ''
+      secret = idx > 0 ? line.slice(idx + 1).trim() : ''
+    }
+    if (login && secret) rows.push({ login, secret, code })
     else bad++
   }
   return { rows, bad }
@@ -28,10 +40,13 @@ function parseLines(text: string): { rows: { login: string; secret: string }[]; 
 function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void }) {
   const [show, setShow] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [code, setCode] = useState(acc.verificationCode)
+  const [savingCode, setSavingCode] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(`Correo: ${acc.login}\nClave: ${acc.secret}${acc.notes ? `\n${acc.notes}` : ''}`)
+      await navigator.clipboard.writeText(`Correo: ${acc.login}\nClave: ${acc.secret}${acc.verificationCode ? `\nCódigo de verificación: ${acc.verificationCode}` : ''}${acc.notes ? `\n${acc.notes}` : ''}`)
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
@@ -51,6 +66,31 @@ function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void 
           {show ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
       </div>
+      <div className="flex items-center gap-2 mt-2">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          maxLength={500}
+          placeholder="Código de verificación (opcional)"
+          autoComplete="off"
+          className="flex-1 min-w-0 rounded-lg bg-bg border border-line px-2 py-1.5 text-xs font-mono focus:outline-none focus:border-primary"
+        />
+        {code.trim() !== acc.verificationCode && (
+          <button
+            disabled={savingCode}
+            onClick={async () => {
+              setSavingCode(true)
+              setCodeError(await updateAccountCode(acc.id, code.trim()))
+              setSavingCode(false)
+              onChange()
+            }}
+            className="px-2 py-1.5 rounded-lg border border-primary/60 text-primary disabled:opacity-50"
+          >
+            {savingCode ? '...' : 'Guardar código'}
+          </button>
+        )}
+      </div>
+      {codeError && <p className="text-red-400 mt-1">{codeError}</p>}
       <div className="flex items-center justify-between mt-2">
         <span className="text-muted">{acc.status === 'sold' ? 'Vendida' : 'Disponible'}</span>
         <div className="flex items-center gap-1">
@@ -112,7 +152,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
     const { rows, bad } = parseLines(text)
     if (rows.length === 0) return setError('Escribe al menos una cuenta con el formato correo:clave.')
     if (rows.length > MAX_LINES) return setError(`Máximo ${MAX_LINES} cuentas por vez.`)
-    if (bad > 0) return setError(`${bad} línea(s) no tienen el formato correo:clave. Revísalas.`)
+    if (bad > 0) return setError(`${bad} línea(s) no tienen el formato correo:clave (o correo|clave|código). Revísalas.`)
     setSaving(true)
     const err = await addAccounts(product.id, type, rows, notes.trim())
     setSaving(false)
@@ -151,11 +191,11 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
           ))}
         </div>
         <div>
-          <label className="text-xs text-muted">Una cuenta por línea: correo:clave</label>
+          <label className="text-xs text-muted">Una cuenta por línea. Sin código: correo:clave · Con código de verificación: correo|clave|código</label>
           <textarea
             rows={5}
             className={`${inputCls} font-mono`}
-            placeholder={'cuenta1@correo.com:clave123\ncuenta2@correo.com:clave456'}
+            placeholder={'cuenta1@correo.com:clave123\ncuenta2@correo.com|clave456|123456'}
             value={text}
             onChange={(e) => setText(e.target.value)}
             spellCheck={false}

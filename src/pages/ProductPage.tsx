@@ -8,6 +8,7 @@ import { accountOut, isSoldOut } from '../utils/pricing'
 import { formatPrice } from '../utils/formatPrice'
 import { buildProductWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
 import ProductImage from '../components/ProductImage'
+import VerificationHelp, { isPlayStation } from '../components/VerificationHelp'
 import NotFound from './NotFound'
 
 export default function ProductPage() {
@@ -163,6 +164,8 @@ export default function ProductPage() {
               Comprar por WhatsApp
             </a>
           </div>
+
+          {section?.kind === 'digital' && isPlayStation(product) && <VerificationHelp product={product} />}
 
           {product.buyMode === 'online' && (
             <p className="text-xs text-muted mt-3">
