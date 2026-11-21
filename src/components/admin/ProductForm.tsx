@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { Fulfillment, PriceOption, Product, Section } from '../../lib/types'
+import type { BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
 import { saveProduct, type ProductInput } from '../../lib/adminApi'
 import { PLATFORMS } from '../../lib/kinds'
 import { uploadImage } from '../../lib/storage'
@@ -38,6 +38,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
     (product?.options ?? []).map((o) => ({ label: o.label, price: String(o.price) })),
   )
   const [fulfillment, setFulfillment] = useState<Fulfillment>(product?.fulfillment ?? 'manual')
+  const [buyMode, setBuyMode] = useState<BuyMode>(product?.buyMode ?? 'whatsapp')
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [available, setAvailable] = useState(product?.available ?? true)
   const [position, setPosition] = useState(product?.position ?? 0)
@@ -109,7 +110,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       fulfillment: kind === 'digital' ? fulfillment : 'manual',
       featured,
       available,
-      buyMode: product?.buyMode ?? 'whatsapp',
+      buyMode,
       position,
     }
 
@@ -282,6 +283,30 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
             )}
           </div>
         )}
+
+        <div>
+          <label className="text-xs text-muted">Forma de venta</label>
+          <div className="grid gap-2 sm:grid-cols-2 mt-1">
+            {(
+              [
+                ['whatsapp', 'Por WhatsApp', 'El cliente te escribe y coordinan el pago.'],
+                ['online', 'Pago en línea', 'El cliente paga en la página (Nequi, PSE, tarjeta).'],
+              ] as [BuyMode, string, string][]
+            ).map(([value, title, help]) => (
+              <button
+                type="button"
+                key={value}
+                onClick={() => setBuyMode(value)}
+                className={`text-left rounded-xl border px-3 py-2.5 ${
+                  buyMode === value ? 'border-primary bg-primary/10' : 'border-line'
+                }`}
+              >
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-xs text-muted mt-0.5">{help}</p>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex flex-wrap items-end gap-5 text-sm">
           <label className="flex items-center gap-2">

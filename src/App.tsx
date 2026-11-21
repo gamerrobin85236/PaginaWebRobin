@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import SectionPage from './pages/SectionPage'
 import ProductPage from './pages/ProductPage'
 import SearchPage from './pages/SearchPage'
+import OrderPage from './pages/OrderPage'
 import NotFound from './pages/NotFound'
 
 // El panel y el login se descargan solo cuando alguien entra a ellos: los clientes no los cargan.
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/seccion/:slug" element={<SectionPage />} />
         <Route path="/producto/:slug" element={<ProductPage />} />
         <Route path="/buscar" element={<SearchPage />} />
+        <Route path="/pedido/:ref" element={<OrderPage />} />
         <Route path="/login" element={<Suspense fallback={fallback}><LoginPage /></Suspense>} />
         <Route path="/admin" element={<Suspense fallback={fallback}><AdminPage /></Suspense>} />
         <Route path="*" element={<NotFound />} />

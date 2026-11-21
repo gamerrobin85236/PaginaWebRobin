@@ -4,13 +4,14 @@ import { LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { checkIsAdmin } from '../lib/adminApi'
 import AdminDashboard from '../components/admin/AdminDashboard'
+import OrdersAdmin from '../components/admin/OrdersAdmin'
 import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
 import SectionsAdmin from '../components/admin/SectionsAdmin'
 
 const IDLE_MS = 10 * 60 * 1000 // cierre de sesión por inactividad
 
-type Tab = 'categories' | 'sections'
+type Tab = 'categories' | 'orders' | 'sections'
 
 export default function AdminPage() {
   const { session, isAuthenticated, loading, signOut } = useAuth()
@@ -96,12 +97,17 @@ export default function AdminPage() {
         >
           Mis categorías
         </button>
+        <button className={tabCls('orders')} onClick={() => setTab('orders')}>
+          Pedidos
+        </button>
         <button className={tabCls('sections')} onClick={() => setTab('sections')}>
           Configurar secciones
         </button>
       </div>
       {tab === 'sections' ? (
         <SectionsAdmin />
+      ) : tab === 'orders' ? (
+        <OrdersAdmin />
       ) : managing ? (
         <SectionManager section={managing} onBack={() => setManaging(null)} />
       ) : (

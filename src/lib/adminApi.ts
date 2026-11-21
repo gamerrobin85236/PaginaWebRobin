@@ -219,3 +219,81 @@ export async function updateAccountCode(id: string, code: string): Promise<strin
   const { error } = await db().from('game_accounts').update({ verification_code: code }).eq('id', id)
   return error ? friendly(error) : null
 }
+
+// ---------- Pedidos ----------
+export type OrderStatus = 'pendiente' | 'pagado' | 'entregado' | 'cancelado' | 'requiere_atencion'
+
+export interface AdminOrder {
+  id: string
+  ref: string
+  status: OrderStatus
+  total: number
+  name: string
+  email: string
+  phone: string
+  notes: string
+  createdAt: string
+  items: { id: string; name: string; option?: string; accountType?: string; quantity: number; fulfillment: string }[]
+}
+
+interface OrderRow {
+  id: string
+  public_ref: string | null
+  status: OrderStatus
+  total: number | string
+  customer_name: string
+  customer_email: string | null
+  customer_phone: string | null
+  notes: string | null
+  created_at: string
+  order_items: {
+    id: string
+    product_name: string
+    option_label: string | null
+    account_type: string | null
+    quantity: number
+    fulfillment: string
+  }[]
+}
+
+export async function fetchOrders(): Promise<AdminOrder[]> {
+  const { data, error } = await db()
+    .from('orders')
+    .select('*, order_items(*)')
+    .order('created_at', { ascending: false })
+    .limit(150)
+  if (error) throw new Error(friendly(error))
+  return (data as OrderRow[]).map((o) => ({
+    id: o.id,
+    ref: o.public_ref ?? o.id.slice(0, 8),
+    status: o.status,
+    total: Number(o.total),
+    name: o.customer_name,
+    email: o.customer_email ?? '',
+    phone: o.customer_phone ?? '',
+    notes: o.notes ?? '',
+    createdAt: o.created_at,
+    items: o.order_items.map((i) => ({
+      id: i.id,
+      name: i.product_name,
+      option: i.option_label ?? undefined,
+      accountType: i.account_type ?? undefined,
+      quantity: i.quantity,
+      fulfillment: i.fulfillment,
+    })),
+  }))
+}
+
+export async function markOrderDelivered(id: string): Promise<string | null> {
+  const { error } = await db()
+    .from('orders')
+    .update({ status: 'entregado', delivered_at: new Date().toISOString() })
+    .eq('id', id)
+  return error ? friendly(error) : null
+}
+
+/** Vuelve a intentar entregar las cuentas de un pedido pagado (por ejemplo, después de cargar más cuentas). */
+export async function retryDelivery(id: string): Promise<string | null> {
+  const { error } = await db().rpc('admin_retry_delivery', { p_order: id })
+  return error ? friendly(error) : null
+}

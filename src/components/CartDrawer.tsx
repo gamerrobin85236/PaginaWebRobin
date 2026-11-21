@@ -3,6 +3,7 @@ import type { AccountType } from '../lib/types'
 import { getUnitPrice, lineKey } from '../hooks/useCart'
 import { useCartContext } from '../hooks/CartContext'
 import ProductImage from './ProductImage'
+import OnlineCheckout from './OnlineCheckout'
 import { formatPrice } from '../utils/formatPrice'
 import { buildCartWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
 
@@ -16,6 +17,8 @@ export default function CartDrawer() {
   if (!open) return null
 
   const close = () => setOpen(false)
+  // El pago en línea se habilita cuando TODOS los productos del carrito se venden así.
+  const onlineOk = items.length > 0 && items.every((i) => i.product.buyMode === 'online')
   const whatsappLink =
     items.length > 0 ? buildWhatsAppLink(buildCartWhatsAppMessage(items, total)) : '#'
 
@@ -103,18 +106,25 @@ export default function CartDrawer() {
               <span className="text-muted text-sm">Total aproximado</span>
               <span className="text-lg font-display font-bold">{formatPrice(total)}</span>
             </div>
+            {onlineOk && <OnlineCheckout items={items} />}
             <a
               href={whatsappLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-primary text-primary-ink font-semibold rounded-full py-3 text-sm hover:brightness-110 transition"
+              className={`flex items-center justify-center gap-2 font-semibold rounded-full py-3 text-sm transition ${
+                onlineOk
+                  ? 'mt-3 border border-line text-muted hover:text-ink'
+                  : 'bg-primary text-primary-ink hover:brightness-110'
+              }`}
             >
               <MessageCircle className="w-4 h-4" />
-              Finalizar por WhatsApp
+              {onlineOk ? 'Prefiero pedir por WhatsApp' : 'Finalizar por WhatsApp'}
             </a>
-            <p className="text-[11px] text-muted text-center mt-3">
-              Se abrirá WhatsApp con tu pedido. El pago y la entrega se coordinan con la tienda.
-            </p>
+            {!onlineOk && (
+              <p className="text-[11px] text-muted text-center mt-3">
+                Se abrirá WhatsApp con tu pedido. El pago y la entrega se coordinan con la tienda.
+              </p>
+            )}
           </div>
         )}
       </div>
