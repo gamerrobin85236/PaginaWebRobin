@@ -1,8 +1,18 @@
 {
   "name": "paginawebrobin",
+  "main": "worker/index.ts",
   "compatibility_date": "2025-01-01",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Solo las direcciones /api/* pasan por el servidor de pagos; el resto lo sirve Cloudflare directo.
+    "run_worker_first": ["/api/*"]
+  },
+  // Datos públicos (no secretos). Los secretos se cargan en Cloudflare: Settings → Variables and Secrets.
+  "vars": {
+    "SITE_URL": "https://robingames.shop",
+    "SUPABASE_URL": "https://crpkfnyoiroeapnhlhyq.supabase.co",
+    "WOMPI_PUBLIC_KEY": ""
   }
 }
