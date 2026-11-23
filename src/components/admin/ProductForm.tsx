@@ -45,6 +45,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
     !product ? '' : product.fulfillment === 'auto' ? 'auto' : product.buyMode === 'online' ? 'online-manual' : 'whatsapp',
   )
   const [buyModeOther, setBuyModeOther] = useState<BuyMode>(product?.buyMode ?? 'whatsapp') // otros tipos de sección
+  const [onlineOnly, setOnlineOnly] = useState(product ? product.allowWhatsapp === false : false)
   const fulfillment: Fulfillment = kind === 'digital' && saleMode === 'auto' ? 'auto' : 'manual'
   const buyMode: BuyMode = kind === 'digital' ? (saleMode === 'whatsapp' ? 'whatsapp' : 'online') : buyModeOther
   const [featured, setFeatured] = useState(product?.featured ?? false)
@@ -128,6 +129,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       featured,
       available,
       buyMode,
+      allowWhatsapp: !onlineOnly,
       position,
     }
 
@@ -246,7 +248,10 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
                 <button
                   type="button"
                   key={value}
-                  onClick={() => setSaleMode(value)}
+                  onClick={() => {
+                    setSaleMode(value)
+                    if (!product) setOnlineOnly(value === 'auto') // la entrega automática se vende solo en la página
+                  }}
                   className={`text-left rounded-xl border px-3 py-2.5 ${
                     saleMode === value ? 'border-primary bg-primary/10' : 'border-line'
                   }`}
@@ -365,6 +370,20 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
             ))}
           </div>
         </div>
+        )}
+
+
+        {buyMode === 'online' && (
+          <label className="flex items-start gap-3 rounded-xl border border-line px-3 py-2.5 text-sm cursor-pointer">
+            <input type="checkbox" className="mt-1" checked={onlineOnly} onChange={(e) => setOnlineOnly(e.target.checked)} />
+            <span>
+              <span className="font-semibold">Solo se compra en la página</span>
+              <span className="block text-xs text-muted mt-0.5">
+                Se oculta la opción de comprar por WhatsApp. Si lo desmarcas, el cliente puede elegir entre pagar en la
+                página o escribirte.
+              </span>
+            </span>
+          </label>
         )}
 
         <div className="flex flex-wrap items-end gap-5 text-sm">

@@ -1,5 +1,5 @@
 import { X, Plus, Minus, Trash2, MessageCircle, ShoppingCart } from 'lucide-react'
-import type { AccountType } from '../lib/types'
+import { isOnlineOnly, type AccountType } from '../lib/types'
 import { getUnitPrice, lineKey } from '../hooks/useCart'
 import { useCartContext } from '../hooks/CartContext'
 import ProductImage from './ProductImage'
@@ -19,6 +19,9 @@ export default function CartDrawer() {
   const close = () => setOpen(false)
   // El pago en línea se habilita cuando TODOS los productos del carrito se venden así.
   const onlineOk = items.length > 0 && items.every((i) => i.product.buyMode === 'online')
+  // Si algún producto solo se vende en la página, el carrito no puede cerrarse por WhatsApp.
+  const whatsappOk = items.every((i) => !isOnlineOnly(i.product))
+  const conflict = !onlineOk && !whatsappOk // mezcla de "solo en la página" con "solo por WhatsApp"
   const whatsappLink =
     items.length > 0 ? buildWhatsAppLink(buildCartWhatsAppMessage(items, total)) : '#'
 
@@ -106,24 +109,34 @@ export default function CartDrawer() {
               <span className="text-muted text-sm">Total aproximado</span>
               <span className="text-lg font-display font-bold">{formatPrice(total)}</span>
             </div>
-            {onlineOk && <OnlineCheckout items={items} />}
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center justify-center gap-2 font-semibold rounded-full py-3 text-sm transition ${
-                onlineOk
-                  ? 'mt-3 border border-line text-muted hover:text-ink'
-                  : 'bg-primary text-primary-ink hover:brightness-110'
-              }`}
-            >
-              <MessageCircle className="w-4 h-4" />
-              {onlineOk ? 'Prefiero pedir por WhatsApp' : 'Finalizar por WhatsApp'}
-            </a>
-            {!onlineOk && (
-              <p className="text-[11px] text-muted text-center mt-3">
-                Se abrirá WhatsApp con tu pedido. El pago y la entrega se coordinan con la tienda.
+            {conflict && (
+              <p className="text-xs rounded-lg border border-amber-400/60 text-amber-400 px-3 py-2">
+                Tu carrito mezcla productos que solo se pagan en la página con otros que solo se piden por WhatsApp.
+                Compra cada grupo por separado: quita unos productos y vuelve a intentar.
               </p>
+            )}
+            {onlineOk && <OnlineCheckout items={items} />}
+            {whatsappOk && !conflict && (
+              <>
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center gap-2 font-semibold rounded-full py-3 text-sm transition ${
+                    onlineOk
+                      ? 'mt-3 border border-line text-muted hover:text-ink'
+                      : 'bg-primary text-primary-ink hover:brightness-110'
+                  }`}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  {onlineOk ? 'Prefiero pedir por WhatsApp' : 'Finalizar por WhatsApp'}
+                </a>
+                {!onlineOk && (
+                  <p className="text-[11px] text-muted text-center mt-3">
+                    Se abrirá WhatsApp con tu pedido. El pago y la entrega se coordinan con la tienda.
+                  </p>
+                )}
+              </>
             )}
           </div>
         )}

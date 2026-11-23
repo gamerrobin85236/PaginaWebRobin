@@ -11,7 +11,9 @@ function friendly(error: { code?: string; message: string }): string {
   if (error.code === '23505') return 'Ya existe un registro con ese nombre. Cambia el nombre o la plataforma.'
   if (error.code === '42501') return 'No tienes permiso para hacer esto. ¿Tu usuario es administrador?'
   if (error.code === '42703' || /column .* does not exist/i.test(error.message))
-    return 'Falta actualizar la base de datos (migracion_tipos.sql en Supabase).'
+    return /allow_whatsapp/.test(error.message)
+      ? 'Falta ejecutar migracion_solo_linea.sql en Supabase.'
+      : 'Falta actualizar la base de datos (migracion_tipos.sql en Supabase).'
   return error.message
 }
 
@@ -81,6 +83,7 @@ export interface ProductInput {
   featured: boolean
   available: boolean
   buyMode: BuyMode
+  allowWhatsapp: boolean
   position: number
 }
 
@@ -113,6 +116,7 @@ export async function saveProductWithId(input: ProductInput, id?: string): Promi
     featured: input.featured,
     available: input.available,
     buy_mode: input.buyMode,
+    allow_whatsapp: input.buyMode === 'online' ? input.allowWhatsapp : true,
     position: input.position,
   }
   if (id) {

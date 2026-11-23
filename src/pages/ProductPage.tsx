@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, Minus, Plus, ShoppingCart, Package } from 'lucide-react'
 import { useCatalog } from '../hooks/CatalogContext'
 import { useCartContext } from '../hooks/CartContext'
-import type { AccountType } from '../lib/types'
+import { isOnlineOnly, type AccountType } from '../lib/types'
 import { accountOut, isSoldOut } from '../utils/pricing'
 import { formatPrice } from '../utils/formatPrice'
 import { buildProductWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
@@ -147,11 +147,14 @@ export default function ProductPage() {
                 addItem(product, type, quantity, option)
                 setOpen(true)
               }}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-primary text-primary font-semibold py-3 text-sm hover:bg-primary/10 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl font-semibold py-3 text-sm transition disabled:opacity-40 disabled:pointer-events-none ${
+                isOnlineOnly(product) ? 'bg-primary text-primary-ink hover:brightness-110' : 'border border-primary text-primary hover:bg-primary/10'
+              }`}
             >
               <ShoppingCart className="w-4 h-4" />
               Agregar al carrito
             </button>
+            {!isOnlineOnly(product) && (
             <a
               href={buildWhatsAppLink(buildProductWhatsAppMessage(product, type, quantity, option))}
               target="_blank"
@@ -163,14 +166,15 @@ export default function ProductPage() {
               <MessageCircle className="w-4 h-4" />
               Comprar por WhatsApp
             </a>
+            )}
           </div>
 
           {section?.kind === 'digital' && isPlayStation(product) && <VerificationHelp product={product} />}
 
           {product.buyMode === 'online' && (
             <p className="text-xs text-muted mt-3">
-              Pago seguro en línea con Nequi, PSE o tarjeta: agrégalo al carrito y paga ahí. También puedes comprarlo por
-              WhatsApp.
+              Pago seguro en línea con Nequi, PSE o tarjeta: agrégalo al carrito y paga ahí.
+              {isOnlineOnly(product) ? '' : ' También puedes comprarlo por WhatsApp.'}
             </p>
           )}
         </div>

@@ -3,6 +3,10 @@ export type AccountType = 'principal' | 'secundaria'
 /** Cómo se compra el producto. "whatsapp" = se coordina por chat; "online" = pago en la página (más adelante). */
 export type BuyMode = 'whatsapp' | 'online'
 
+/** true cuando el producto solo se puede comprar pagando en la página (sin opción de WhatsApp). */
+export const isOnlineOnly = (p: { buyMode: BuyMode; allowWhatsapp?: boolean }): boolean =>
+  p.buyMode === 'online' && p.allowWhatsapp === false
+
 /** Tipo de sección: decide qué formulario usa el administrador y cómo se vende. */
 export type SectionKind = 'digital' | 'physical' | 'streaming' | 'subscription' | 'generic'
 
@@ -44,5 +48,6 @@ export interface Product {
   featured: boolean
   available: boolean
   buyMode: BuyMode
+  allowWhatsapp?: boolean // con pago en línea: false = solo se compra en la página (sin botón de WhatsApp)
   position: number
 }

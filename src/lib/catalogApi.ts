@@ -29,6 +29,7 @@ export interface ProductRow {
   featured: boolean
   available: boolean
   buy_mode: BuyMode
+  allow_whatsapp?: boolean | null
   position: number
 }
 
@@ -63,6 +64,7 @@ export function toProduct(row: ProductRow): Product {
     featured: row.featured,
     available: row.available,
     buyMode: row.buy_mode,
+    allowWhatsapp: row.allow_whatsapp ?? true,
     position: row.position,
   }
 }
