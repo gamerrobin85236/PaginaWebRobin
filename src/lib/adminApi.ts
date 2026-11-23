@@ -200,13 +200,21 @@ export async function fetchAccountCounts(): Promise<Map<string, { principal: num
 
 export async function addAccounts(
   productId: string,
-  type: AccountType,
-  rows: { login: string; secret: string; code: string }[],
+  rows: { type: AccountType; login: string; secret: string; code: string }[],
   notes: string,
 ): Promise<string | null> {
   const { error } = await db()
     .from('game_accounts')
-    .insert(rows.map((r) => ({ product_id: productId, account_type: type, login: r.login, secret: r.secret, verification_code: r.code, notes })))
+    .insert(
+      rows.map((r) => ({
+        product_id: productId,
+        account_type: r.type,
+        login: r.login,
+        secret: r.secret,
+        verification_code: r.code,
+        notes,
+      })),
+    )
   return error ? friendly(error) : null
 }
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import type { AccountType, BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
+import type { BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
 import { addAccounts, saveProduct, saveProductWithId, type ProductInput } from '../../lib/adminApi'
-import { parseLines } from '../../lib/accountLines'
+import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
 import { PLATFORMS } from '../../lib/kinds'
 import { uploadImage } from '../../lib/storage'
 import { slugify } from '../../utils/slugify'
@@ -44,8 +44,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const [available, setAvailable] = useState(product?.available ?? true)
   const [position, setPosition] = useState(product?.position ?? 0)
   const [file, setFile] = useState<File | null>(null)
-  const [accText, setAccText] = useState('') // cuentas a cargar al crear (solo juego digital nuevo con entrega automática)
-  const [accType, setAccType] = useState<AccountType>('principal')
+  const [accDrafts, setAccDrafts] = useState<AccountDraft[]>([emptyAccount()]) // cuentas a cargar al crear (digital nuevo, entrega automática)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,11 +85,12 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
         if (Number.isNaN(secondary) || secondary < 0) return setError('El precio de la cuenta secundaria no es válido.')
       }
       if (!product && platforms.length === 0) return setError('Elige al menos una plataforma.')
-      if (!product && fulfillment === 'auto' && accText.trim()) {
-        if (platforms.length !== 1) return setError('Para cargar cuentas aquí elige una sola plataforma (cada plataforma tiene sus propias cuentas).')
-        const parsed = parseLines(accText)
-        if (parsed.bad > 0) return setError(`${parsed.bad} línea(s) de las cuentas no tienen el formato correo:clave (o correo|clave|código).`)
-        if (parsed.rows.length > 200) return setError('Máximo 200 cuentas por vez.')
+      if (!product && fulfillment === 'auto') {
+        const read = readAccounts(accDrafts)
+        if ('error' in read) return setError(read.error)
+        if (read.rows.length > 0 && platforms.length !== 1) {
+          return setError('Para cargar cuentas aquí elige una sola plataforma (cada plataforma tiene sus propias cuentas).')
+        }
       }
     }
     if (kind === 'physical') {
@@ -135,8 +135,9 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
           continue
         }
         saved++
-        if (fulfillment === 'auto' && accText.trim() && platforms.length === 1 && res.id) {
-          const accErr = await addAccounts(res.id, accType, parseLines(accText).rows, '')
+        const toLoad = fulfillment === 'auto' && platforms.length === 1 && res.id ? readAccounts(accDrafts) : null
+        if (toLoad && 'rows' in toLoad && toLoad.rows.length > 0 && res.id) {
+          const accErr = await addAccounts(res.id, toLoad.rows, '')
           if (accErr) errors.push(`El juego se guardó, pero las cuentas no: ${accErr}. Cárgalas con el botón "Cuentas".`)
         }
       }
@@ -251,45 +252,20 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
         )}
 
         {kind === 'digital' && !product && fulfillment === 'auto' && (
-          <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 flex flex-col gap-2">
-            <p className="text-sm font-semibold">Cuentas para entregar automáticamente</p>
-            <p className="text-xs text-muted">
-              Pega aquí las cuentas que tienes de este juego, una por línea. Cuando alguien pague, la página le entrega una
-              y le envía los datos por correo. Puedes agregar más después con el botón "Cuentas".
-            </p>
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 flex flex-col gap-3">
+            <div>
+              <p className="text-sm font-semibold">Cuentas para entregar automáticamente</p>
+              <p className="text-xs text-muted mt-1">
+                Escribe cada cuenta que tengas de este juego y márcala como principal o secundaria. Cuando alguien pague, la
+                página le entrega una y se la envía por correo. La tienda cuenta sola cuántas quedan de cada tipo.
+              </p>
+            </div>
             {platforms.length > 1 ? (
               <p className="text-xs text-amber-400">
                 Elegiste varias plataformas: guarda primero y luego carga las cuentas de cada una con el botón "Cuentas".
               </p>
             ) : (
-              <>
-                <div className="flex gap-2">
-                  {(['principal', 'secundaria'] as AccountType[]).map((t) => (
-                    <button
-                      type="button"
-                      key={t}
-                      onClick={() => setAccType(t)}
-                      className={`rounded-full border px-3 py-1 text-xs ${
-                        accType === t ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'
-                      }`}
-                    >
-                      {t === 'principal' ? 'Principal' : 'Secundaria'}
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  rows={4}
-                  className={`${inputCls} font-mono`}
-                  placeholder={'correo@gmail.com|clave123|código de verificación\ncorreo2@gmail.com:clave456'}
-                  value={accText}
-                  onChange={(e) => setAccText(e.target.value)}
-                  spellCheck={false}
-                  autoComplete="off"
-                />
-                <p className="text-[11px] text-muted">
-                  Con código de verificación: correo|clave|código · Sin código: correo:clave
-                </p>
-              </>
+              <AccountRowsEditor drafts={accDrafts} onChange={setAccDrafts} />
             )}
           </div>
         )}

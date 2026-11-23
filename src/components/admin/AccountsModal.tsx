@@ -2,12 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import type { AccountType, Product } from '../../lib/types'
 import { addAccounts, deleteAccount, fetchAccounts, markAccountSold, updateAccountCode, type GameAccount } from '../../lib/adminApi'
-import { parseLines } from '../../lib/accountLines'
+import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
 import Modal from './Modal'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
-const MAX_LINES = 200
 
 function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void }) {
   const [show, setShow] = useState(false)
@@ -100,8 +99,7 @@ function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void 
 export default function AccountsModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const [accounts, setAccounts] = useState<GameAccount[]>([])
   const [loading, setLoading] = useState(true)
-  const [type, setType] = useState<AccountType>('principal')
-  const [text, setText] = useState('')
+  const [drafts, setDrafts] = useState<AccountDraft[]>([emptyAccount()])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,16 +119,15 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
     e.preventDefault()
     setError(null)
     setInfo(null)
-    const { rows, bad } = parseLines(text)
-    if (rows.length === 0) return setError('Escribe al menos una cuenta con el formato correo:clave.')
-    if (rows.length > MAX_LINES) return setError(`Máximo ${MAX_LINES} cuentas por vez.`)
-    if (bad > 0) return setError(`${bad} línea(s) no tienen el formato correo:clave (o correo|clave|código). Revísalas.`)
+    const read = readAccounts(drafts)
+    if ('error' in read) return setError(read.error)
+    if (read.rows.length === 0) return setError('Escribe al menos una cuenta (correo y contraseña).')
     setSaving(true)
-    const err = await addAccounts(product.id, type, rows, notes.trim())
+    const err = await addAccounts(product.id, read.rows, notes.trim())
     setSaving(false)
     if (err) return setError(err)
-    setText('')
-    setInfo(`Se agregaron ${rows.length} cuenta(s).`)
+    setDrafts([emptyAccount()])
+    setInfo(`Se agregaron ${read.rows.length} cuenta(s).`)
     load()
   }
 
@@ -148,32 +145,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
       </p>
 
       <form id="accounts-form" onSubmit={submit} className="flex flex-col gap-3 mt-4">
-        <div className="flex gap-2">
-          {(['principal', 'secundaria'] as AccountType[]).map((t) => (
-            <button
-              type="button"
-              key={t}
-              onClick={() => setType(t)}
-              className={`rounded-full border px-4 py-1.5 text-sm ${
-                type === t ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'
-              }`}
-            >
-              {t === 'principal' ? 'Principal' : 'Secundaria'}
-            </button>
-          ))}
-        </div>
-        <div>
-          <label className="text-xs text-muted">Una cuenta por línea. Sin código: correo:clave · Con código de verificación: correo|clave|código</label>
-          <textarea
-            rows={5}
-            className={`${inputCls} font-mono`}
-            placeholder={'cuenta1@correo.com:clave123\ncuenta2@correo.com|clave456|123456'}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
+        <AccountRowsEditor drafts={drafts} onChange={setDrafts} />
         <div>
           <label className="text-xs text-muted">Nota para todas (opcional, ej. instrucciones o código de respaldo)</label>
           <input className={inputCls} value={notes} onChange={(e) => setNotes(e.target.value)} />
