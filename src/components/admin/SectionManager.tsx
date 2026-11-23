@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Minus, Pencil, Plus, Star, Trash2 } from 'lucide-react'
 import type { Product, Section } from '../../lib/types'
 import {
+  type AccountCounts,
   deleteProduct,
   fetchAccountCounts,
   fetchAdminProducts,
@@ -12,6 +13,8 @@ import { KIND_HELP, KIND_LABEL } from '../../lib/kinds'
 import { useCatalog } from '../../hooks/CatalogContext'
 import { formatPrice } from '../../utils/formatPrice'
 import AccountsModal from './AccountsModal'
+import AccountsOverview, { pendingFor } from './AccountsOverview'
+import OrdersAdmin from './OrdersAdmin'
 import ProductForm from './ProductForm'
 import ProductImage from '../ProductImage'
 
@@ -39,7 +42,8 @@ export default function SectionManager({ section, onBack }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<Product | null | undefined>(undefined)
   const [managingAccounts, setManagingAccounts] = useState<Product | null>(null)
-  const [counts, setCounts] = useState<Map<string, { principal: number; secundaria: number }>>(new Map())
+  const [counts, setCounts] = useState<AccountCounts>(new Map())
+  const [view, setView] = useState<'products' | 'orders' | 'accounts'>('products')
 
   const load = useCallback(() => {
     fetchAccountCounts().then(setCounts)
@@ -62,6 +66,12 @@ export default function SectionManager({ section, onBack }: Props) {
     (p) =>
       (!platform || p.platform === platform) &&
       (!query || p.name.toLowerCase().includes(query.toLowerCase())),
+  )
+
+  const productIds = useMemo(() => new Set(products.map((p) => p.id)), [products])
+  const pendingCount = useMemo(
+    () => (section.kind === 'digital' ? products.filter((p) => pendingFor(p, counts).length > 0).length : 0),
+    [products, counts, section.kind],
   )
 
   const changed = () => {
@@ -115,6 +125,42 @@ export default function SectionManager({ section, onBack }: Props) {
         </button>
       </div>
 
+      <div className="flex gap-2 mt-5 border-b border-line pb-3">
+        {(
+          [
+            ['products', 'Productos'],
+            ['orders', 'Pedidos'],
+            ...(section.kind === 'digital' ? [['accounts', 'Cuentas']] : []),
+          ] as ['products' | 'orders' | 'accounts', string][]
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setView(value)}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-full border inline-flex items-center gap-1.5 ${
+              view === value ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'
+            }`}
+          >
+            {label}
+            {value === 'accounts' && pendingCount > 0 && (
+              <span className="rounded-full bg-amber-400 text-black text-[11px] font-bold px-1.5">{pendingCount}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {view === 'orders' && (
+        <div className="mt-5">
+          <OrdersAdmin productIds={productIds} title={`Pedidos de ${section.name}`} />
+        </div>
+      )}
+      {view === 'accounts' && section.kind === 'digital' && (
+        <div className="mt-5">
+          <AccountsOverview products={products} counts={counts} onManage={setManagingAccounts} />
+        </div>
+      )}
+
+      {view === 'products' && (
+        <>
       <div className="mt-4 flex flex-col gap-3">
         <input
           value={query}
@@ -228,6 +274,8 @@ export default function SectionManager({ section, onBack }: Props) {
           </li>
         ))}
       </ul>
+        </>
+      )}
 
       {managingAccounts && (
         <AccountsModal

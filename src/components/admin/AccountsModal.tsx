@@ -3,12 +3,13 @@ import { Check, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import type { AccountType, Product } from '../../lib/types'
 import { addAccounts, deleteAccount, fetchAccounts, markAccountSold, updateAccountCode, type GameAccount } from '../../lib/adminApi'
 import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
+import { isPlayStation } from '../VerificationHelp'
 import Modal from './Modal'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
 
-function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void }) {
+function AccountRow({ acc, onChange, needsCode }: { acc: GameAccount; onChange: () => void; needsCode: boolean }) {
   const [show, setShow] = useState(false)
   const [copied, setCopied] = useState(false)
   const [code, setCode] = useState(acc.verificationCode)
@@ -26,7 +27,7 @@ function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void 
   }
 
   return (
-    <li className={`rounded-lg border border-line p-2.5 text-xs ${acc.status === 'sold' ? 'opacity-50' : ''}`}>
+    <li className={`rounded-lg border p-2.5 text-xs ${needsCode ? 'border-amber-400/70' : 'border-line'} ${acc.status === 'sold' ? 'opacity-50' : ''}`}>
       <div className="flex items-center gap-2">
         <span className="rounded-md border border-line px-1.5 py-0.5 text-primary shrink-0">
           {acc.type === 'principal' ? 'Principal' : 'Secundaria'}
@@ -61,6 +62,7 @@ function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void 
           </button>
         )}
       </div>
+      {needsCode && <p className="text-amber-400 mt-1">Falta el código de verificación de esta cuenta.</p>}
       {codeError && <p className="text-red-400 mt-1">{codeError}</p>}
       <div className="flex items-center justify-between mt-2">
         <span className="text-muted">{acc.status === 'sold' ? 'Vendida' : 'Disponible'}</span>
@@ -159,7 +161,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
       {!loading && accounts.length === 0 && <p className="text-xs text-muted">Todavía no hay cuentas cargadas.</p>}
       <ul className="flex flex-col gap-2">
         {accounts.map((a) => (
-          <AccountRow key={a.id} acc={a} onChange={load} />
+          <AccountRow key={a.id} acc={a} onChange={load} needsCode={isPlayStation(product) && a.status === 'available' && !a.verificationCode.trim()} />
         ))}
       </ul>
     </Modal>

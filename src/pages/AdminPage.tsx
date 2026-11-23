@@ -8,11 +8,10 @@ import EmailAdmin from '../components/admin/EmailAdmin'
 import OrdersAdmin from '../components/admin/OrdersAdmin'
 import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
-import SectionsAdmin from '../components/admin/SectionsAdmin'
 
 const IDLE_MS = 10 * 60 * 1000 // cierre de sesión por inactividad
 
-type Tab = 'categories' | 'orders' | 'email' | 'sections'
+type Tab = 'categories' | 'orders' | 'email'
 
 export default function AdminPage() {
   const { session, isAuthenticated, loading, signOut } = useAuth()
@@ -104,20 +103,15 @@ export default function AdminPage() {
         <button className={tabCls('email')} onClick={() => setTab('email')}>
           Correo al cliente
         </button>
-        <button className={tabCls('sections')} onClick={() => setTab('sections')}>
-          Configurar secciones
-        </button>
       </div>
-      {tab === 'sections' ? (
-        <SectionsAdmin />
-      ) : tab === 'orders' ? (
-        <OrdersAdmin />
+      {tab === 'orders' ? (
+        <OrdersAdmin title="Todos los pedidos" />
       ) : tab === 'email' ? (
         <EmailAdmin />
       ) : managing ? (
         <SectionManager section={managing} onBack={() => setManaging(null)} />
       ) : (
-        <AdminDashboard onOpen={setManaging} onSettings={() => setTab('sections')} />
+        <AdminDashboard onOpen={setManaging} />
       )}
     </div>
   )

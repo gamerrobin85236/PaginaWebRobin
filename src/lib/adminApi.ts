@@ -185,14 +185,19 @@ export async function fetchAccounts(productId: string): Promise<GameAccount[]> {
   return (data as AccountRow[]).map(toAccount)
 }
 
-/** Cuántas cuentas disponibles hay por producto: { productId: { principal, secundaria } } */
-export async function fetchAccountCounts(): Promise<Map<string, { principal: number; secundaria: number }>> {
-  const map = new Map<string, { principal: number; secundaria: number }>()
-  const { data, error } = await db().from('game_accounts').select('product_id, account_type').eq('status', 'available')
+/** Cuentas disponibles por producto, y cuántas de ellas no tienen código de verificación. */
+export type AccountCounts = Map<string, { principal: number; secundaria: number; sinCodigo: number }>
+export async function fetchAccountCounts(): Promise<AccountCounts> {
+  const map: AccountCounts = new Map()
+  const { data, error } = await db()
+    .from('game_accounts')
+    .select('product_id, account_type, verification_code')
+    .eq('status', 'available')
   if (error || !data) return map
-  for (const r of data as { product_id: string; account_type: AccountType }[]) {
-    const cur = map.get(r.product_id) ?? { principal: 0, secundaria: 0 }
+  for (const r of data as { product_id: string; account_type: AccountType; verification_code: string | null }[]) {
+    const cur = map.get(r.product_id) ?? { principal: 0, secundaria: 0, sinCodigo: 0 }
     cur[r.account_type]++
+    if (!r.verification_code?.trim()) cur.sinCodigo++
     map.set(r.product_id, cur)
   }
   return map
@@ -249,7 +254,7 @@ export interface AdminOrder {
   phone: string
   notes: string
   createdAt: string
-  items: { id: string; name: string; option?: string; accountType?: string; quantity: number; fulfillment: string }[]
+  items: { id: string; productId: string | null; name: string; option?: string; accountType?: string; quantity: number; fulfillment: string }[]
 }
 
 interface OrderRow {
@@ -264,6 +269,7 @@ interface OrderRow {
   created_at: string
   order_items: {
     id: string
+    product_id: string | null
     product_name: string
     option_label: string | null
     account_type: string | null
@@ -291,6 +297,7 @@ export async function fetchOrders(): Promise<AdminOrder[]> {
     createdAt: o.created_at,
     items: o.order_items.map((i) => ({
       id: i.id,
+      productId: i.product_id,
       name: i.product_name,
       option: i.option_label ?? undefined,
       accountType: i.account_type ?? undefined,

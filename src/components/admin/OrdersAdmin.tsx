@@ -34,7 +34,8 @@ function whatsappTo(phone: string, text: string): string {
   return `https://wa.me/${full}?text=${encodeURIComponent(text)}`
 }
 
-export default function OrdersAdmin() {
+/** Si se pasa `productIds`, solo se muestran los pedidos (y los productos) de esa categoría. */
+export default function OrdersAdmin({ productIds, title = 'Pedidos' }: { productIds?: Set<string>; title?: string }) {
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [filter, setFilter] = useState<OrderStatus | ''>('pagado')
   const [loading, setLoading] = useState(true)
@@ -45,12 +46,18 @@ export default function OrdersAdmin() {
     setLoading(true)
     fetchOrders()
       .then((o) => {
-        setOrders(o)
+        setOrders(
+          productIds
+            ? o
+                .filter((x) => x.items.some((i) => i.productId && productIds.has(i.productId)))
+                .map((x) => ({ ...x, items: x.items.filter((i) => i.productId && productIds.has(i.productId)) }))
+            : o,
+        )
         setError(null)
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Error'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [productIds])
   useEffect(load, [load])
 
   async function act(id: string, run: () => Promise<string | null>) {
@@ -68,7 +75,7 @@ export default function OrdersAdmin() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-display font-bold text-xl">Pedidos</h2>
+        <h2 className="font-display font-bold text-xl">{title}</h2>
         <button onClick={load} className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary">
           <RefreshCw className="w-4 h-4" /> Actualizar
         </button>

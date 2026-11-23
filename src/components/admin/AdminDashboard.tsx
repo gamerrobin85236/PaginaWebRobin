@@ -4,7 +4,7 @@ import { fetchAdminProducts, fetchAdminSections } from '../../lib/adminApi'
 import { sectionIcon } from '../../lib/icons'
 import { KIND_SHORT } from '../../lib/kinds'
 
-export default function AdminDashboard({ onOpen, onSettings }: { onOpen: (s: Section) => void; onSettings: () => void }) {
+export default function AdminDashboard({ onOpen }: { onOpen: (s: Section) => void }) {
   const [sections, setSections] = useState<Section[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,11 +26,7 @@ export default function AdminDashboard({ onOpen, onSettings }: { onOpen: (s: Sec
   if (sections.length === 0) {
     return (
       <p className="text-sm text-muted">
-        Aún no hay categorías.{' '}
-        <button onClick={onSettings} className="text-primary underline">
-          Crea la primera
-        </button>
-        .
+        Aún no hay categorías. Pídele a tu desarrollador (CorApps) que agregue las que necesites.
       </p>
     )
   }
