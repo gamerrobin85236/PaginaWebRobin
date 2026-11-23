@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { AccountType, BuyMode, Fulfillment, PriceOption, Product, Section, SectionKind } from './types'
+import type { AccountType, BuyMode, Fulfillment, OptionGroup, PriceOption, Product, Section, SectionKind } from './types'
 
 export interface SectionRow {
   id: string
@@ -25,6 +25,7 @@ export interface ProductRow {
   platform: string | null
   stock: number | null
   options: PriceOption[] | null
+  option_groups?: OptionGroup[] | null
   fulfillment: Fulfillment | null
   featured: boolean
   available: boolean
@@ -61,6 +62,7 @@ export function toProduct(row: ProductRow): Product {
     stock: row.stock ?? undefined,
     fulfillment: row.fulfillment ?? 'manual',
     options: (row.options ?? []).map((o) => ({ label: o.label, price: Number(o.price) })),
+    optionGroups: row.option_groups?.length ? row.option_groups : undefined,
     featured: row.featured,
     available: row.available,
     buyMode: row.buy_mode,

@@ -10,6 +10,12 @@ export const isOnlineOnly = (p: { buyMode: BuyMode; allowWhatsapp?: boolean }): 
 /** Tipo de sección: decide qué formulario usa el administrador y cómo se vende. */
 export type SectionKind = 'digital' | 'physical' | 'streaming' | 'subscription' | 'generic'
 
+/** Un grupo de variantes que el cliente elige (ej. Consola: PS4, PS5). */
+export interface OptionGroup {
+  title: string
+  values: string[]
+}
+
 /** Una opción con precio propio (ej. "Perfil", "3 meses"). */
 export interface PriceOption {
   label: string
@@ -43,6 +49,7 @@ export interface Product {
   platform?: string // PS5, PS4, Xbox, Switch...
   stock?: number // solo físicos y consolas; 0 = agotado
   options?: PriceOption[] // streaming y suscripciones; price = la opción más barata
+  optionGroups?: OptionGroup[] // variantes (consola, plan, duración); cada opción es una combinación 'PS5 · Extra · 3 meses'
   fulfillment?: Fulfillment // por defecto 'manual'
   accountStock?: { principal: number; secundaria: number } // solo entrega automática
   featured: boolean

@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { toProduct, toSection, type ProductRow, type SectionRow } from './catalogApi'
-import type { AccountType, BuyMode, Fulfillment, PriceOption, Product, Section, SectionKind } from './types'
+import type { AccountType, BuyMode, Fulfillment, OptionGroup, PriceOption, Product, Section, SectionKind } from './types'
 
 function db() {
   if (!supabase) throw new Error('La base de datos no está configurada.')
@@ -10,8 +10,10 @@ function db() {
 function friendly(error: { code?: string; message: string }): string {
   if (error.code === '23505') return 'Ya existe un registro con ese nombre. Cambia el nombre o la plataforma.'
   if (error.code === '42501') return 'No tienes permiso para hacer esto. ¿Tu usuario es administrador?'
-  if (error.code === '42703' || /column .* does not exist/i.test(error.message))
-    return /allow_whatsapp/.test(error.message)
+  if (error.code === '42703' || error.code === 'PGRST204' || /column .* does not exist|Could not find the .* column/i.test(error.message))
+    return /option_groups/.test(error.message)
+      ? 'Falta ejecutar migracion_variantes.sql en Supabase.'
+      : /allow_whatsapp/.test(error.message)
       ? 'Falta ejecutar migracion_solo_linea.sql en Supabase.'
       : 'Falta actualizar la base de datos (migracion_tipos.sql en Supabase).'
   return error.message
@@ -79,6 +81,7 @@ export interface ProductInput {
   platform?: string
   stock?: number
   options: PriceOption[]
+  optionGroups?: OptionGroup[] // undefined = no tocar; [] = quitar las variantes
   fulfillment: Fulfillment
   featured: boolean
   available: boolean
@@ -112,6 +115,7 @@ export async function saveProductWithId(input: ProductInput, id?: string): Promi
     platform: input.platform || null,
     stock: input.stock ?? null,
     options: input.options,
+    ...(input.optionGroups !== undefined ? { option_groups: input.optionGroups.length > 0 ? input.optionGroups : null } : {}),
     fulfillment: input.fulfillment,
     featured: input.featured,
     available: input.available,

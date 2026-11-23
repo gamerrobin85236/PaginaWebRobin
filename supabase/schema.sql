@@ -499,3 +499,5 @@ revoke all on function public.create_order(text, text, text, text, text, jsonb, 
 grant execute on function public.create_order(text, text, text, text, text, jsonb, jsonb) to service_role;
 
 alter table public.products add column if not exists allow_whatsapp boolean not null default true;
+
+alter table public.products add column if not exists option_groups jsonb;

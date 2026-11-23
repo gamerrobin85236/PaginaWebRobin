@@ -18,6 +18,7 @@ export default function ProductPage() {
   const [acctSel, setAccountType] = useState<AccountType>('principal')
   const [quantity, setQuantity] = useState(1)
   const [optionIdx, setOptionIdx] = useState(0)
+  const [sel, setSel] = useState<string[]>([])
 
   const product = products.find((p) => p.slug === slug)
   if (loading) return <p className="text-sm text-muted">Cargando...</p>
@@ -25,13 +26,26 @@ export default function ProductPage() {
 
   const section = sections.find((s) => s.id === product.sectionId)
   const options = product.options ?? []
-  const option = options[optionIdx] ?? options[0]
+  const groups = product.optionGroups ?? []
+  const grouped = groups.length > 0 && options.length > 0
+  const partsOf = (o: { label: string }) => o.label.split(' · ')
+  // Variantes: se parte de la combinación más barata y cada clic ajusta lo demás para que siempre exista un precio.
+  const cheapest = options.reduce((a, b) => (b.price < a.price ? b : a), options[0])
+  const cur = sel.length === groups.length && grouped ? sel : cheapest ? partsOf(cheapest) : []
+  const option = grouped ? options.find((o) => o.label === cur.join(' · ')) : (options[optionIdx] ?? options[0])
+  const choose = (gi: number, v: string) => {
+    const next = cur.map((x, i) => (i === gi ? v : x))
+    const exact = options.find((o) => o.label === next.join(' · '))
+    const fallback = exact ?? options.find((o) => partsOf(o)[gi] === v)
+    if (fallback) setSel(partsOf(fallback))
+  }
+  const comboExists = (gi: number, v: string) => options.some((o) => o.label === cur.map((x, i) => (i === gi ? v : x)).join(' · '))
   const outOf = (t: AccountType) => accountOut(product, t)
   // Si la cuenta elegida se agotó pero hay de la otra, se pasa a la otra automáticamente.
   const other: AccountType = acctSel === 'principal' ? 'secundaria' : 'principal'
   const type: AccountType =
     outOf(acctSel) && Boolean(product.priceSecondary) && !outOf(other) ? other : acctSel
-  const soldOut = isSoldOut(product) || (options.length === 0 && outOf(type))
+  const soldOut = isSoldOut(product) || (options.length === 0 && outOf(type)) || (grouped && !option)
   const maxQty = Math.min(product.stock ?? Infinity, product.accountStock?.[type] ?? Infinity)
   const hasSecondary = Boolean(product.priceSecondary) && options.length === 0
   const unitPrice = option
@@ -89,7 +103,38 @@ export default function ProductPage() {
             </div>
           )}
 
-          {options.length > 0 && (
+          {grouped && (
+            <div className="mt-6 flex flex-col gap-4">
+              {groups.map((g, gi) => {
+                const shown = g.values.filter((v) => options.some((o) => partsOf(o)[gi] === v))
+                return (
+                  <div key={g.title}>
+                    <span className="text-xs text-muted">{g.title}</span>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {shown.map((v) => (
+                        <button
+                          key={v}
+                          onClick={() => choose(gi, v)}
+                          className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
+                            cur[gi] === v
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : comboExists(gi, v)
+                                ? 'border-line hover:border-muted'
+                                : 'border-line text-muted opacity-60 hover:border-muted'
+                          }`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              <p className="text-xs text-muted">Elegiste: {cur.join(' · ')}</p>
+            </div>
+          )}
+
+          {!grouped && options.length > 0 && (
             <div className="mt-6">
               <span className="text-xs text-muted">Elige tu opción</span>
               <div className="grid gap-3 sm:grid-cols-2 mt-2">

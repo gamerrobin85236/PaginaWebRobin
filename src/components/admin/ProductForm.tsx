@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
+import type { BuyMode, Fulfillment, OptionGroup, PriceOption, Product, Section } from '../../lib/types'
 import { addAccounts, saveProduct, saveProductWithId, type ProductInput } from '../../lib/adminApi'
 import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
 import { PLATFORMS } from '../../lib/kinds'
@@ -8,6 +8,7 @@ import { slugify } from '../../utils/slugify'
 import ImageField from './ImageField'
 import Modal from './Modal'
 import OptionsEditor, { type OptionDraft } from './OptionsEditor'
+import VariantsEditor, { combinations, LABEL_SEP } from './VariantsEditor'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
@@ -28,6 +29,12 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const kind = section.kind
   const withOptions = kind === 'streaming' || kind === 'subscription'
 
+  // Suscripciones con variantes (consola, plan, duración): el cliente elige y el precio sale de la combinación.
+  const [useVariants, setUseVariants] = useState(Boolean(product?.optionGroups?.length))
+  const [groups, setGroups] = useState<OptionGroup[]>(product?.optionGroups ?? [])
+  const [variantPrices, setVariantPrices] = useState<Record<string, string>>(
+    Object.fromEntries((product?.options ?? []).map((o) => [o.label, String(o.price)])),
+  )
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
   const [price, setPrice] = useState(product ? String(product.price) : '')
@@ -72,7 +79,22 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
     let stockNum: number | undefined
     let parsedOptions: PriceOption[] = []
 
-    if (withOptions) {
+    if (kind === 'subscription' && useVariants) {
+      if (groups.length === 0) return setError('Elige una plantilla de variantes o cambia a "Planes simples".')
+      if (groups.some((g) => !g.title.trim() || g.values.length === 0)) {
+        return setError('Cada grupo necesita un nombre y al menos un valor.')
+      }
+      for (const c of combinations(groups)) {
+        const label = c.join(LABEL_SEP)
+        const raw = variantPrices[label]
+        if (raw === undefined || raw === '') continue
+        const p = Number(raw)
+        if (Number.isNaN(p) || p <= 0) return setError(`El precio de "${label}" no es válido.`)
+        parsedOptions.push({ label, price: p })
+      }
+      if (parsedOptions.length === 0) return setError('Escribe el precio de al menos una combinación.')
+      basePrice = Math.min(...parsedOptions.map((o) => o.price))
+    } else if (withOptions) {
       if (options.length === 0) return setError('Agrega al menos una opción con precio.')
       for (const o of options) {
         const p = Number(o.price)
@@ -125,6 +147,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       priceSecondary: secondary,
       stock: stockNum,
       options: parsedOptions,
+      optionGroups: kind === 'subscription' && useVariants ? groups : product?.optionGroups?.length ? [] : undefined,
       fulfillment,
       featured,
       available,
@@ -296,17 +319,51 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
         />
 
         {withOptions ? (
-          <OptionsEditor
-            title={kind === 'subscription' ? 'Planes y precios' : 'Opciones y precios'}
-            help={
-              kind === 'subscription'
-                ? 'El cliente elige el tiempo y el precio sale automático.'
-                : 'Por ejemplo perfil o cuenta completa, cada una con su precio.'
-            }
-            presets={kind === 'subscription' ? SUBSCRIPTION_PRESETS : STREAMING_PRESETS}
-            value={options}
-            onChange={setOptions}
-          />
+          kind === 'subscription' ? (
+            <div className="rounded-xl border border-line p-3 flex flex-col gap-3">
+              <div>
+                <p className="text-sm font-semibold">Planes y precios</p>
+                <p className="text-xs text-muted">El cliente elige y el precio sale automático.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    [false, 'Planes simples', 'Una lista de opciones con precio (ej. 1 mes, 3 meses).'],
+                    [true, 'Con variantes', 'Consola, plan y duración (PlayStation Plus, Game Pass).'],
+                  ] as [boolean, string, string][]
+                ).map(([value, title, help]) => (
+                  <button
+                    type="button"
+                    key={title}
+                    onClick={() => setUseVariants(value)}
+                    className={`text-left rounded-xl border px-3 py-2 ${useVariants === value ? 'border-primary bg-primary/10' : 'border-line'}`}
+                  >
+                    <p className="text-sm font-semibold">{title}</p>
+                    <p className="text-[11px] text-muted mt-0.5">{help}</p>
+                  </button>
+                ))}
+              </div>
+              {useVariants ? (
+                <VariantsEditor groups={groups} onGroups={setGroups} prices={variantPrices} onPrices={setVariantPrices} />
+              ) : (
+                <OptionsEditor
+                  title="Planes"
+                  help="Por ejemplo 1 mes, 3 meses, 12 meses, cada uno con su precio."
+                  presets={SUBSCRIPTION_PRESETS}
+                  value={options}
+                  onChange={setOptions}
+                />
+              )}
+            </div>
+          ) : (
+            <OptionsEditor
+              title="Opciones y precios"
+              help="Por ejemplo perfil o cuenta completa, cada una con su precio."
+              presets={STREAMING_PRESETS}
+              value={options}
+              onChange={setOptions}
+            />
+          )
         ) : (
           <div className="grid grid-cols-2 gap-4">
             <div>
