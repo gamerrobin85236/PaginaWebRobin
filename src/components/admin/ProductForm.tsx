@@ -15,6 +15,8 @@ const inputCls =
 const SUBSCRIPTION_PRESETS = ['1 mes', '3 meses', '6 meses', '12 meses']
 const STREAMING_PRESETS = ['Perfil 1 mes', 'Cuenta completa 1 mes']
 
+type SaleMode = 'auto' | 'online-manual' | 'whatsapp'
+
 interface Props {
   product: Product | null
   section: Section
@@ -38,8 +40,13 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const [options, setOptions] = useState<OptionDraft[]>(
     (product?.options ?? []).map((o) => ({ label: o.label, price: String(o.price) })),
   )
-  const [fulfillment, setFulfillment] = useState<Fulfillment | ''>(product?.fulfillment ?? (kind === 'digital' ? '' : 'manual'))
-  const [buyMode, setBuyMode] = useState<BuyMode>(product?.buyMode ?? 'whatsapp')
+  // Juego digital: UNA sola elección que define la forma de venta y la entrega.
+  const [saleMode, setSaleMode] = useState<SaleMode | ''>(
+    !product ? '' : product.fulfillment === 'auto' ? 'auto' : product.buyMode === 'online' ? 'online-manual' : 'whatsapp',
+  )
+  const [buyModeOther, setBuyModeOther] = useState<BuyMode>(product?.buyMode ?? 'whatsapp') // otros tipos de sección
+  const fulfillment: Fulfillment = kind === 'digital' && saleMode === 'auto' ? 'auto' : 'manual'
+  const buyMode: BuyMode = kind === 'digital' ? (saleMode === 'whatsapp' ? 'whatsapp' : 'online') : buyModeOther
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [available, setAvailable] = useState(product?.available ?? true)
   const [position, setPosition] = useState(product?.position ?? 0)
@@ -79,7 +86,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       parsedOptions = []
     }
     if (kind === 'digital') {
-      if (!fulfillment) return setError('Elige cómo se entrega este juego: automática (con cuentas cargadas) o por WhatsApp.')
+      if (!saleMode) return setError('Elige cómo vas a vender este juego (ver "¿Cómo lo vendes?").')
       if (priceSecondary) {
         secondary = Number(priceSecondary)
         if (Number.isNaN(secondary) || secondary < 0) return setError('El precio de la cuenta secundaria no es válido.')
@@ -117,7 +124,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       priceSecondary: secondary,
       stock: stockNum,
       options: parsedOptions,
-      fulfillment: kind === 'digital' && fulfillment ? fulfillment : 'manual',
+      fulfillment,
       featured,
       available,
       buyMode,
@@ -227,20 +234,21 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
 
         {kind === 'digital' && (
           <div>
-            <label className="text-xs text-muted">¿Cómo se entrega este juego?</label>
-            <div className="grid gap-2 sm:grid-cols-2 mt-1">
+            <label className="text-xs text-muted">¿Cómo lo vendes?</label>
+            <div className="grid gap-2 mt-1">
               {(
                 [
-                  ['manual', 'Por WhatsApp (manual)', 'Yo entrego la cuenta por WhatsApp. Útil si no la tengo y la compro a un proveedor.'],
-                  ['auto', 'Automática', 'Al pagar, la página entrega una cuenta de mi inventario y se la envía por correo.'],
-                ] as [Fulfillment, string, string][]
+                  ['auto', 'Automático', 'El cliente paga en la página y recibe la cuenta al instante (en pantalla y por correo). Usa las cuentas que cargues.'],
+                  ['online-manual', 'Pago en línea, yo entrego', 'El cliente paga en la página y tú le envías la cuenta por WhatsApp. Útil si la compras a un proveedor.'],
+                  ['whatsapp', 'Todo por WhatsApp', 'El cliente te escribe y coordinan el pago y la entrega.'],
+                ] as [SaleMode, string, string][]
               ).map(([value, title, help]) => (
                 <button
                   type="button"
                   key={value}
-                  onClick={() => setFulfillment(value)}
+                  onClick={() => setSaleMode(value)}
                   className={`text-left rounded-xl border px-3 py-2.5 ${
-                    fulfillment === value ? 'border-primary bg-primary/10' : 'border-line'
+                    saleMode === value ? 'border-primary bg-primary/10' : 'border-line'
                   }`}
                 >
                   <p className="text-sm font-semibold">{title}</p>
@@ -321,6 +329,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
           </div>
         )}
 
+        {kind !== 'digital' && (
         <div>
           <label className="text-xs text-muted">Forma de venta</label>
           <div className="grid gap-2 sm:grid-cols-2 mt-1">
@@ -333,9 +342,9 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
               <button
                 type="button"
                 key={value}
-                onClick={() => setBuyMode(value)}
+                onClick={() => setBuyModeOther(value)}
                 className={`text-left rounded-xl border px-3 py-2.5 ${
-                  buyMode === value ? 'border-primary bg-primary/10' : 'border-line'
+                  buyModeOther === value ? 'border-primary bg-primary/10' : 'border-line'
                 }`}
               >
                 <p className="text-sm font-semibold">{title}</p>
@@ -344,6 +353,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
             ))}
           </div>
         </div>
+        )}
 
         <div className="flex flex-wrap items-end gap-5 text-sm">
           <label className="flex items-center gap-2">

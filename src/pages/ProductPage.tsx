@@ -169,8 +169,8 @@ export default function ProductPage() {
 
           {product.buyMode === 'online' && (
             <p className="text-xs text-muted mt-3">
-              El pago en línea con tarjeta, PSE o Nequi estará disponible pronto para este producto.
-              Mientras tanto, puedes comprarlo por WhatsApp.
+              Pago seguro en línea con Nequi, PSE o tarjeta: agrégalo al carrito y paga ahí. También puedes comprarlo por
+              WhatsApp.
             </p>
           )}
         </div>
