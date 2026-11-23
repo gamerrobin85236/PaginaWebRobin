@@ -8,7 +8,7 @@ import { accountOut, isSoldOut } from '../utils/pricing'
 import { formatPrice } from '../utils/formatPrice'
 import { buildProductWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
 import ProductImage from '../components/ProductImage'
-import VerificationHelp, { isPlayStation } from '../components/VerificationHelp'
+import AccountTypesInfo from '../components/AccountTypesInfo'
 import NotFound from './NotFound'
 
 export default function ProductPage() {
@@ -169,7 +169,7 @@ export default function ProductPage() {
             )}
           </div>
 
-          {section?.kind === 'digital' && isPlayStation(product) && <VerificationHelp product={product} />}
+          {section?.kind === 'digital' && <AccountTypesInfo product={product} selected={type} />}
 
           {product.buyMode === 'online' && (
             <p className="text-xs text-muted mt-3">

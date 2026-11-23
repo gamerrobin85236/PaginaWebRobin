@@ -11,7 +11,7 @@ import {
   updateAccount,
   type GameAccount,
 } from '../../lib/adminApi'
-import { isPlayStation } from '../VerificationHelp'
+import { isPlayStation } from '../../lib/platform'
 import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
 
 const fieldCls =

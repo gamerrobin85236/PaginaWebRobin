@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react'
 import type { Product } from '../../lib/types'
 import type { AccountCounts } from '../../lib/adminApi'
-import { isPlayStation } from '../VerificationHelp'
+import { isPlayStation } from '../../lib/platform'
 
 const ZERO = { principal: 0, secundaria: 0, sinCodigo: 0 }
 
