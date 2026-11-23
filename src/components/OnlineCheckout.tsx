@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { CreditCard, X } from 'lucide-react'
-import { getUnitPrice, type CartItem } from '../hooks/useCart'
+import { getUnitPrice, lineKey, type CartItem } from '../hooks/useCart'
 import { formatPrice } from '../utils/formatPrice'
 import { createCheckout, needsShipping, type Customer, type Shipping } from '../lib/checkoutApi'
 import { DEPARTMENTS } from '../lib/departments'
@@ -182,7 +182,7 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
               <div className="rounded-xl bg-bg border border-line p-3">
                 <ul className="text-sm flex flex-col gap-1">
                   {items.map((i) => (
-                    <li key={i.lineKey} className="flex justify-between gap-3">
+                    <li key={lineKey(i)} className="flex justify-between gap-3">
                       <span className="min-w-0">
                         {i.product.name}
                         {i.product.platform ? ` (${i.product.platform})` : ''}
