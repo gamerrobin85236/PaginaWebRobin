@@ -282,7 +282,7 @@ export async function fetchBuyers(orderIds: string[]): Promise<Map<string, { ref
 }
 
 // ---------- Pedidos ----------
-export type OrderStatus = 'pendiente' | 'pagado' | 'entregado' | 'cancelado' | 'requiere_atencion'
+export type OrderStatus = 'pendiente' | 'pagado' | 'enviado' | 'entregado' | 'cancelado' | 'requiere_atencion'
 
 export interface AdminOrder {
   id: string
@@ -294,6 +294,8 @@ export interface AdminOrder {
   phone: string
   notes: string
   createdAt: string
+  shipping?: { document: string; department: string; city: string; address: string; notes: string }
+  tracking: string
   items: { id: string; productId: string | null; name: string; option?: string; accountType?: string; quantity: number; fulfillment: string }[]
 }
 
@@ -307,6 +309,12 @@ interface OrderRow {
   customer_phone: string | null
   notes: string | null
   created_at: string
+  customer_document: string | null
+  shipping_department: string | null
+  shipping_city: string | null
+  shipping_address: string | null
+  shipping_notes: string | null
+  tracking: string | null
   order_items: {
     id: string
     product_id: string | null
@@ -335,6 +343,16 @@ export async function fetchOrders(): Promise<AdminOrder[]> {
     phone: o.customer_phone ?? '',
     notes: o.notes ?? '',
     createdAt: o.created_at,
+    tracking: o.tracking ?? '',
+    shipping: o.shipping_address
+      ? {
+          document: o.customer_document ?? '',
+          department: o.shipping_department ?? '',
+          city: o.shipping_city ?? '',
+          address: o.shipping_address,
+          notes: o.shipping_notes ?? '',
+        }
+      : undefined,
     items: o.order_items.map((i) => ({
       id: i.id,
       productId: i.product_id,
@@ -345,6 +363,18 @@ export async function fetchOrders(): Promise<AdminOrder[]> {
       fulfillment: i.fulfillment,
     })),
   }))
+}
+
+/** Marca un pedido físico como enviado, con el número de guía (opcional). */
+export async function markOrderShipped(id: string, tracking: string): Promise<string | null> {
+  const { error } = await db()
+    .from('orders')
+    .update({ status: 'enviado', tracking: tracking.trim() || null, shipped_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error && /orders_status_check|violates check/i.test(error.message)) {
+    return 'Falta ejecutar migracion_envios.sql en Supabase.'
+  }
+  return error ? friendly(error) : null
 }
 
 export async function markOrderDelivered(id: string): Promise<string | null> {

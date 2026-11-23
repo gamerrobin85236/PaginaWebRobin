@@ -172,17 +172,23 @@ export default function OrderPage() {
           {support}
         </>
       )}
-      {(order.status === 'pagado' || order.status === 'entregado') && (
+      {(order.status === 'pagado' || order.status === 'entregado' || order.status === 'enviado') && (
         <>
-          <h1 className="font-display font-bold text-2xl mt-1">¡Pago aprobado! 🎮</h1>
+          <h1 className="font-display font-bold text-2xl mt-1">
+            {order.status === 'enviado' ? '¡Tu pedido va en camino! 📦' : '¡Pago aprobado! 🎮'}
+          </h1>
           <p className="text-sm text-muted mt-2">
             Gracias por tu compra de {formatPrice(order.total)}.
-            {hasManual && ' Te enviaremos el resto de tu pedido por WhatsApp en breve.'}
+            {order.shipping
+              ? order.status === 'enviado'
+                ? ` Lo enviamos a ${order.shipping.city}.${order.shipping.tracking ? ` Guía: ${order.shipping.tracking}.` : ''}`
+                : ` Estamos preparando tu envío a ${order.shipping.city}; te escribiremos por WhatsApp para coordinar el envío.`
+              : hasManual && ' Te enviaremos el resto de tu pedido por WhatsApp en breve.'}
           </p>
         </>
       )}
 
-      {(order.status === 'pagado' || order.status === 'entregado' || order.status === 'requiere_atencion') && (
+      {(order.status === 'pagado' || order.status === 'enviado' || order.status === 'entregado' || order.status === 'requiere_atencion') && (
         <div className="mt-6 flex flex-col gap-5">
           {order.items.map((item) => (
             <div key={item.id}>
@@ -198,7 +204,7 @@ export default function OrderPage() {
                 </div>
               ) : (
                 <p className="text-xs text-muted mt-1">
-                  {item.fulfillment === 'auto' ? 'Preparando tu cuenta...' : 'Te lo enviaremos por WhatsApp.'}
+                  {item.fulfillment === 'auto' ? 'Preparando tu cuenta...' : order.shipping ? 'Preparando tu envío.' : 'Te lo enviaremos por WhatsApp.'}
                 </p>
               )}
             </div>

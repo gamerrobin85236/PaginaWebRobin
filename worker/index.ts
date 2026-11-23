@@ -22,7 +22,7 @@ interface Env {
 const WOMPI_CHECKOUT = 'https://checkout.wompi.co/p/'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PAID_STATUSES = ['pagado', 'entregado', 'requiere_atencion']
+const PAID_STATUSES = ['pagado', 'enviado', 'entregado', 'requiere_atencion']
 
 // ---------------------------------------------------------------- utilidades
 function json(data: unknown, status = 200): Response {
@@ -108,7 +108,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
 
   const raw = await readBody(request, 20_000)
   if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
-  let body: { items?: unknown; customer?: { name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
+  let body: { items?: unknown; shipping?: Record<string, unknown>; customer?: { name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
   try {
     body = JSON.parse(raw)
   } catch {
@@ -158,6 +158,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
   ).catch(() => [])
 
   const lines: OrderLine[] = []
+  let needsShipping = false // hay productos físicos: se piden los datos de envío
   const used = new Map<string, number>() // unidades pedidas por producto+tipo (para no pasarse del inventario)
   for (const w of wanted) {
     const p = byId.get(w.productId)
@@ -190,6 +191,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
       const left = availability.find((a) => a.product_id === p.id && a.account_type === accountType)?.available ?? 0
       if (total > left) return json({ error: `"${p.name}" está agotado o quedan menos unidades.` }, 409)
     }
+    if (p.stock !== null) needsShipping = true
     if (p.stock !== null && total > p.stock) {
       return json({ error: `De "${p.name}" solo quedan ${p.stock} unidades.` }, 409)
     }
@@ -205,6 +207,24 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
     })
   }
 
+  // --- datos de envío (solo si hay productos físicos o consolas)
+  let shipping: { document: string; department: string; city: string; address: string; notes: string } | null = null
+  if (needsShipping) {
+    const sh = body.shipping ?? {}
+    const clean = (v: unknown, max: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max)
+    shipping = {
+      document: clean(sh.document, 20).replace(/[^\dA-Za-z.-]/g, ''),
+      department: clean(sh.department, 40),
+      city: clean(sh.city, 60),
+      address: clean(sh.address, 160),
+      notes: clean(sh.notes, 200),
+    }
+    if (shipping.document.replace(/\D/g, '').length < 5) return json({ error: 'Escribe tu número de documento (cédula) para el envío.' }, 400)
+    if (shipping.department.length < 3) return json({ error: 'Elige el departamento del envío.' }, 400)
+    if (shipping.city.length < 2) return json({ error: 'Escribe la ciudad o municipio del envío.' }, 400)
+    if (shipping.address.length < 6) return json({ error: 'Escribe la dirección completa del envío.' }, 400)
+  }
+
   const total = lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0)
   const amountInCents = Math.round(total * 100)
   const reference = `GR-${randomHex(8).toUpperCase()}`
@@ -217,6 +237,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
     p_ref: reference,
     p_token: token,
     p_items: lines,
+    p_shipping: shipping,
   })
 
   // Firma de integridad de Wompi: SHA-256 de  referencia + monto en centavos + moneda + secreto
@@ -505,6 +526,8 @@ interface OrderRow {
   id: string
   status: string
   total: number | string
+  tracking: string | null
+  shipping_city: string | null
   order_items: {
     id: string
     product_name: string
@@ -525,7 +548,7 @@ async function handleOrder(request: Request, env: Env, url: URL): Promise<Respon
 
   const rows = await select<OrderRow>(
     env,
-    `orders?public_ref=eq.${ref}&access_token=eq.${token}&select=id,status,total,order_items(id,product_name,option_label,account_type,quantity,fulfillment)`,
+    `orders?public_ref=eq.${ref}&access_token=eq.${token}&select=id,status,total,tracking,shipping_city,order_items(id,product_name,option_label,account_type,quantity,fulfillment)`,
   )
   const order = rows[0]
   if (!order) return json({ error: 'Pedido no encontrado.' }, 404)
@@ -543,6 +566,7 @@ async function handleOrder(request: Request, env: Env, url: URL): Promise<Respon
     reference: ref,
     status: order.status,
     total: Number(order.total),
+    shipping: order.shipping_city ? { city: order.shipping_city, tracking: order.tracking ?? '' } : undefined,
     items: order.order_items.map((it) => ({
       id: it.id,
       name: it.product_name,

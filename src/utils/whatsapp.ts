@@ -34,7 +34,7 @@ export function buildProductWhatsAppMessage(
       : product.price
   return `Hola, estoy interesado en *${product.name}*${describe(product, accountType, option)} x${quantity} — ${formatPrice(
     price * quantity,
-  )}. ¿Está disponible?`
+  )}. ${product.stock !== undefined ? '¿Está disponible y hacen envío a mi ciudad?' : '¿Está disponible?'}`
 }
 
 export function buildCartWhatsAppMessage(items: CartItem[], total: number): string {
@@ -44,5 +44,7 @@ export function buildCartWhatsAppMessage(items: CartItem[], total: number): stri
         getUnitPrice(item) * item.quantity,
       )}`,
   )
-  return `Hola, quiero comprar:\n${lines.join('\n')}\n\nTotal aproximado: ${formatPrice(total)}`
+  const ships = items.some((i) => i.product.stock !== undefined)
+  const shipping = ships ? '\n\nDatos para el envío:\nNombre:\nCédula:\nCiudad y departamento:\nDirección:' : ''
+  return `Hola, quiero comprar:\n${lines.join('\n')}\n\nTotal aproximado: ${formatPrice(total)}${shipping}`
 }

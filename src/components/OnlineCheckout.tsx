@@ -1,13 +1,25 @@
 import { useState, type FormEvent } from 'react'
 import { CreditCard } from 'lucide-react'
 import type { CartItem } from '../hooks/useCart'
-import { createCheckout, type Customer } from '../lib/checkoutApi'
+import { createCheckout, needsShipping, type Customer, type Shipping } from '../lib/checkoutApi'
+import { DEPARTMENTS } from '../lib/departments'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
 
 // Los datos del cliente se recuerdan en este dispositivo para no escribirlos de nuevo.
 const KEY = 'gr_customer'
+const SHIP_KEY = 'gr_shipping'
+
+function loadShipping(): Shipping {
+  try {
+    const raw = localStorage.getItem(SHIP_KEY)
+    if (raw) return { document: '', department: '', city: '', address: '', notes: '', ...(JSON.parse(raw) as object) }
+  } catch {
+    /* sin datos guardados */
+  }
+  return { document: '', department: '', city: '', address: '', notes: '' }
+}
 
 function loadCustomer(): Customer {
   try {
@@ -21,6 +33,8 @@ function loadCustomer(): Customer {
 
 export default function OnlineCheckout({ items }: { items: CartItem[] }) {
   const hasAuto = items.some((i) => i.product.fulfillment === 'auto')
+  const ships = needsShipping(items)
+  const [ship, setShip] = useState(loadShipping)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(loadCustomer)
   const [busy, setBusy] = useState(false)
@@ -35,10 +49,11 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
     setBusy(true)
     try {
       localStorage.setItem(KEY, JSON.stringify({ ...form, emailConfirm: '' }))
+      if (ships) localStorage.setItem(SHIP_KEY, JSON.stringify(ship))
     } catch {
       /* no pasa nada */
     }
-    const result = await createCheckout(items, form)
+    const result = await createCheckout(items, ships ? { ...form, shipping: ship } : form)
     if ('error' in result) {
       setBusy(false)
       return setError(result.error)
@@ -107,6 +122,63 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
         value={form.phone}
         onChange={(e) => setForm({ ...form, phone: e.target.value })}
       />
+      {ships && (
+        <div className="flex flex-col gap-2.5 rounded-xl border border-line p-3">
+          <p className="text-sm font-semibold">📦 Datos de envío</p>
+          <input
+            className={inputCls}
+            inputMode="numeric"
+            placeholder="Número de documento (cédula)"
+            autoComplete="off"
+            required
+            maxLength={20}
+            value={ship.document}
+            onChange={(e) => setShip({ ...ship, document: e.target.value })}
+          />
+          <select
+            className={inputCls}
+            required
+            autoComplete="address-level1"
+            value={ship.department}
+            onChange={(e) => setShip({ ...ship, department: e.target.value })}
+          >
+            <option value="">Departamento</option>
+            {DEPARTMENTS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <input
+            className={inputCls}
+            placeholder="Ciudad o municipio"
+            autoComplete="address-level2"
+            required
+            maxLength={60}
+            value={ship.city}
+            onChange={(e) => setShip({ ...ship, city: e.target.value })}
+          />
+          <input
+            className={inputCls}
+            placeholder="Dirección completa (calle, número, barrio)"
+            autoComplete="street-address"
+            required
+            maxLength={160}
+            value={ship.address}
+            onChange={(e) => setShip({ ...ship, address: e.target.value })}
+          />
+          <input
+            className={inputCls}
+            placeholder="Indicaciones (apartamento, conjunto, referencia) · opcional"
+            maxLength={200}
+            value={ship.notes}
+            onChange={(e) => setShip({ ...ship, notes: e.target.value })}
+          />
+          <p className="text-[11px] text-muted">
+            Te escribiremos por WhatsApp para coordinar el valor y la guía del envío.
+          </p>
+        </div>
+      )}
       {error && <p className="text-xs text-danger">{error}</p>}
       <button
         type="submit"

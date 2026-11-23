@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { MessageCircle, RefreshCw } from 'lucide-react'
-import { fetchOrders, markOrderDelivered, retryDelivery, type AdminOrder, type OrderStatus } from '../../lib/adminApi'
+import { Check, Copy, MessageCircle, RefreshCw } from 'lucide-react'
+import { fetchOrders, markOrderDelivered, markOrderShipped, retryDelivery, type AdminOrder, type OrderStatus } from '../../lib/adminApi'
 import { formatPrice } from '../../utils/formatPrice'
 import { buildWhatsAppLink } from '../../utils/whatsapp'
 
 const LABEL: Record<OrderStatus, string> = {
   pendiente: 'Esperando pago',
   pagado: 'Pagado · por entregar',
+  enviado: 'Enviado',
   entregado: 'Entregado',
   cancelado: 'Cancelado',
   requiere_atencion: 'Requiere atención',
@@ -14,18 +15,65 @@ const LABEL: Record<OrderStatus, string> = {
 const COLOR: Record<OrderStatus, string> = {
   pendiente: 'text-muted border-line',
   pagado: 'text-primary border-primary/60',
+  enviado: 'text-primary border-primary/60',
   entregado: 'text-muted border-line',
   cancelado: 'text-muted border-line',
   requiere_atencion: 'text-red-400 border-red-400/60',
 }
-const FILTERS: { value: OrderStatus | ''; label: string }[] = [
+const filtersFor = (physical: boolean): { value: OrderStatus | ''; label: string }[] => [
   { value: '', label: 'Todos' },
-  { value: 'pagado', label: 'Por entregar' },
+  { value: 'pagado', label: physical ? 'Por enviar' : 'Por entregar' },
+  ...(physical ? [{ value: 'enviado' as OrderStatus, label: 'Enviados' }] : []),
   { value: 'requiere_atencion', label: 'Requieren atención' },
   { value: 'entregado', label: 'Entregados' },
   { value: 'pendiente', label: 'Sin pagar' },
   { value: 'cancelado', label: 'Cancelados' },
 ]
+
+function shippingText(o: AdminOrder): string {
+  const sh = o.shipping
+  if (!sh) return ''
+  return `Nombre: ${o.name}\nDocumento: ${sh.document}\nCelular: ${o.phone}\nDepartamento: ${sh.department}\nCiudad: ${sh.city}\nDirección: ${sh.address}${sh.notes ? `\nIndicaciones: ${sh.notes}` : ''}`
+}
+
+function ShipBox({ o, busy, onShip }: { o: AdminOrder; busy: boolean; onShip: (tracking: string) => void }) {
+  const [tracking, setTracking] = useState('')
+  return (
+    <div className="flex flex-wrap items-center gap-2 w-full">
+      <input
+        value={tracking}
+        onChange={(e) => setTracking(e.target.value)}
+        maxLength={120}
+        placeholder={`Guía o empresa de envío (opcional)`}
+        aria-label={`Guía del pedido ${o.ref}`}
+        className="flex-1 min-w-[180px] rounded-lg bg-bg border border-line px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
+      />
+      <button disabled={busy} onClick={() => onShip(tracking)} className="rounded-lg bg-primary text-primary-ink px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+        Marcar como enviado
+      </button>
+    </div>
+  )
+}
+
+function CopyShipping({ o }: { o: AdminOrder }) {
+  const [done, setDone] = useState(false)
+  return (
+    <button
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(shippingText(o))
+          setDone(true)
+          setTimeout(() => setDone(false), 1500)
+        } catch {
+          /* el navegador no permitió copiar */
+        }
+      }}
+      className="inline-flex items-center gap-1 text-xs text-primary underline"
+    >
+      {done ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copiar datos de envío
+    </button>
+  )
+}
 
 function whatsappTo(phone: string, text: string): string {
   // Los celulares colombianos se guardan con 10 dígitos; se les antepone el 57.
@@ -35,7 +83,7 @@ function whatsappTo(phone: string, text: string): string {
 }
 
 /** Si se pasa `productIds`, solo se muestran los pedidos (y los productos) de esa categoría. */
-export default function OrdersAdmin({ productIds, title = 'Pedidos' }: { productIds?: Set<string>; title?: string }) {
+export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = false }: { productIds?: Set<string>; title?: string; physical?: boolean }) {
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [filter, setFilter] = useState<OrderStatus | ''>('pagado')
   const [loading, setLoading] = useState(true)
@@ -82,7 +130,7 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos' }: { product
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {FILTERS.map((f) => (
+        {filtersFor(physical).map((f) => (
           <button key={f.value} className={chip(filter === f.value)} onClick={() => setFilter(f.value)}>
             {f.label}
             {f.value && ` (${orders.filter((o) => o.status === f.value).length})`}
@@ -129,6 +177,23 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos' }: { product
               ))}
             </ul>
 
+            {o.shipping && (
+              <div className="rounded-lg border border-line bg-bg p-3 text-sm">
+                <p className="text-xs font-semibold text-primary mb-1">📦 Datos de envío</p>
+                <p>
+                  {o.shipping.address}
+                  {o.shipping.notes ? ` · ${o.shipping.notes}` : ''}
+                </p>
+                <p className="text-xs text-muted mt-0.5">
+                  {o.shipping.city}, {o.shipping.department} · Documento {o.shipping.document}
+                </p>
+                {o.tracking && <p className="text-xs mt-1">Guía: <b>{o.tracking}</b></p>}
+                <div className="mt-1.5">
+                  <CopyShipping o={o} />
+                </div>
+              </div>
+            )}
+
             {o.notes && <p className="text-xs text-red-400">{o.notes}</p>}
 
             <div className="flex flex-wrap items-center gap-2">
@@ -151,13 +216,16 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos' }: { product
                   Reintentar entrega automática
                 </button>
               )}
-              {(o.status === 'pagado' || o.status === 'requiere_atencion') && (
+              {o.shipping && (o.status === 'pagado' || o.status === 'requiere_atencion') && (
+                <ShipBox o={o} busy={busy === o.id} onShip={(t) => act(o.id, () => markOrderShipped(o.id, t))} />
+              )}
+              {(o.status === 'pagado' || o.status === 'requiere_atencion' || o.status === 'enviado') && (
                 <button
                   disabled={busy === o.id}
                   onClick={() => act(o.id, () => markOrderDelivered(o.id))}
                   className="rounded-lg bg-primary text-primary-ink px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
                 >
-                  Marcar como entregado
+                  {o.shipping ? 'Marcar como recibido por el cliente' : 'Marcar como entregado'}
                 </button>
               )}
             </div>

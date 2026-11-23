@@ -335,8 +335,20 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
           <div className="grid gap-2 sm:grid-cols-2 mt-1">
             {(
               [
-                ['whatsapp', 'Por WhatsApp', 'El cliente te escribe y coordinan el pago.'],
-                ['online', 'Pago en línea', 'El cliente paga en la página (Nequi, PSE, tarjeta).'],
+                [
+                  'whatsapp',
+                  'Por WhatsApp',
+                  kind === 'physical'
+                    ? 'El cliente te escribe y coordinan el pago y el envío.'
+                    : 'El cliente te escribe y coordinan el pago.',
+                ],
+                [
+                  'online',
+                  'Pago en línea (automático)',
+                  kind === 'physical'
+                    ? 'El cliente paga en la página (Nequi, PSE, tarjeta) y deja sus datos de envío. Las unidades bajan solas.'
+                    : 'El cliente paga en la página (Nequi, PSE, tarjeta).',
+                ],
               ] as [BuyMode, string, string][]
             ).map(([value, title, help]) => (
               <button

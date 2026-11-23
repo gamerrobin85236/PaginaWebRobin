@@ -150,7 +150,7 @@ export default function SectionManager({ section, onBack }: Props) {
 
       {view === 'orders' && (
         <div className="mt-5">
-          <OrdersAdmin productIds={productIds} title={`Pedidos de ${section.name}`} />
+          <OrdersAdmin productIds={productIds} physical={section.kind === 'physical'} title={`Pedidos de ${section.name}`} />
         </div>
       )}
       {view === 'accounts' && section.kind === 'digital' && (

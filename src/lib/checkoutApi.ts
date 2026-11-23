@@ -1,11 +1,23 @@
 import type { AccountType } from './types'
 import type { CartItem } from '../hooks/useCart'
 
+export interface Shipping {
+  document: string
+  department: string
+  city: string
+  address: string
+  notes: string
+}
+
+/** Los productos físicos y consolas (los únicos con cantidad) se envían: hay que pedir la dirección. */
+export const needsShipping = (items: CartItem[]): boolean => items.some((i) => i.product.stock !== undefined)
+
 export interface Customer {
   name: string
   email: string
   emailConfirm: string
   phone: string
+  shipping?: Shipping
 }
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
@@ -53,8 +65,9 @@ export interface DeliveredAccount {
 
 export interface OrderView {
   reference: string
-  status: 'pendiente' | 'pagado' | 'entregado' | 'cancelado' | 'requiere_atencion'
+  status: 'pendiente' | 'pagado' | 'enviado' | 'entregado' | 'cancelado' | 'requiere_atencion'
   total: number
+  shipping?: { city: string; tracking: string }
   items: {
     id: string
     name: string
