@@ -38,7 +38,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const [options, setOptions] = useState<OptionDraft[]>(
     (product?.options ?? []).map((o) => ({ label: o.label, price: String(o.price) })),
   )
-  const [fulfillment, setFulfillment] = useState<Fulfillment>(product?.fulfillment ?? (kind === 'digital' ? 'auto' : 'manual'))
+  const [fulfillment, setFulfillment] = useState<Fulfillment | ''>(product?.fulfillment ?? (kind === 'digital' ? '' : 'manual'))
   const [buyMode, setBuyMode] = useState<BuyMode>(product?.buyMode ?? 'whatsapp')
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [available, setAvailable] = useState(product?.available ?? true)
@@ -80,6 +80,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       parsedOptions = []
     }
     if (kind === 'digital') {
+      if (!fulfillment) return setError('Elige cómo se entrega este juego: automática (con cuentas cargadas) o por WhatsApp.')
       if (priceSecondary) {
         secondary = Number(priceSecondary)
         if (Number.isNaN(secondary) || secondary < 0) return setError('El precio de la cuenta secundaria no es válido.')
@@ -116,7 +117,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       priceSecondary: secondary,
       stock: stockNum,
       options: parsedOptions,
-      fulfillment: kind === 'digital' ? fulfillment : 'manual',
+      fulfillment: kind === 'digital' && fulfillment ? fulfillment : 'manual',
       featured,
       available,
       buyMode,
@@ -229,8 +230,8 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
             <div className="grid gap-2 sm:grid-cols-2 mt-1">
               {(
                 [
-                  ['manual', 'Manual', 'Yo entrego la cuenta (por ejemplo, la compro a otro proveedor).'],
-                  ['auto', 'Automática', 'La página entrega una cuenta de mi inventario. Las cargo en "Cuentas".'],
+                  ['manual', 'Por WhatsApp (manual)', 'Yo entrego la cuenta por WhatsApp. Útil si no la tengo y la compro a un proveedor.'],
+                  ['auto', 'Automática', 'Al pagar, la página entrega una cuenta de mi inventario y se la envía por correo.'],
                 ] as [Fulfillment, string, string][]
               ).map(([value, title, help]) => (
                 <button
