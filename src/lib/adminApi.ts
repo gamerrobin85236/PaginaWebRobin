@@ -149,6 +149,7 @@ export interface GameAccount {
   verificationCode: string
   status: 'available' | 'sold'
   soldAt?: string
+  orderId?: string
 }
 
 interface AccountRow {
@@ -161,6 +162,7 @@ interface AccountRow {
   verification_code: string | null
   status: 'available' | 'sold'
   sold_at: string | null
+  order_id: string | null
 }
 
 const toAccount = (r: AccountRow): GameAccount => ({
@@ -173,6 +175,7 @@ const toAccount = (r: AccountRow): GameAccount => ({
   verificationCode: r.verification_code ?? '',
   status: r.status,
   soldAt: r.sold_at ?? undefined,
+  orderId: r.order_id ?? undefined,
 })
 
 export async function fetchAccounts(productId: string): Promise<GameAccount[]> {
@@ -239,6 +242,43 @@ export async function deleteAccount(id: string): Promise<string | null> {
 export async function updateAccountCode(id: string, code: string): Promise<string | null> {
   const { error } = await db().from('game_accounts').update({ verification_code: code }).eq('id', id)
   return error ? friendly(error) : null
+}
+
+export interface AccountEdit {
+  type: AccountType
+  login: string
+  secret: string
+  code: string
+  notes: string
+}
+
+/** Corrige los datos de una cuenta (correo, contraseña, código, tipo o nota). */
+export async function updateAccount(id: string, e: AccountEdit): Promise<string | null> {
+  const { error } = await db()
+    .from('game_accounts')
+    .update({ account_type: e.type, login: e.login, secret: e.secret, verification_code: e.code, notes: e.notes })
+    .eq('id', id)
+  return error ? friendly(error) : null
+}
+
+/** Devuelve al inventario una cuenta marcada como vendida por error. */
+export async function markAccountAvailable(id: string): Promise<string | null> {
+  const { error } = await db()
+    .from('game_accounts')
+    .update({ status: 'available', sold_at: null, order_id: null })
+    .eq('id', id)
+  return error ? friendly(error) : null
+}
+
+/** Datos básicos de los pedidos que compraron cuentas: id → { ref, nombre }. */
+export async function fetchBuyers(orderIds: string[]): Promise<Map<string, { ref: string; name: string }>> {
+  const map = new Map<string, { ref: string; name: string }>()
+  if (orderIds.length === 0) return map
+  const { data } = await db().from('orders').select('id, public_ref, customer_name').in('id', orderIds)
+  for (const o of (data ?? []) as { id: string; public_ref: string | null; customer_name: string }[]) {
+    map.set(o.id, { ref: o.public_ref ?? o.id.slice(0, 8), name: o.customer_name })
+  }
+  return map
 }
 
 // ---------- Pedidos ----------
