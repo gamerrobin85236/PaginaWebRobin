@@ -13,6 +13,8 @@
   "vars": {
     "SITE_URL": "https://robingames.shop",
     "SUPABASE_URL": "https://crpkfnyoiroeapnhlhyq.supabase.co",
-    "WOMPI_PUBLIC_KEY": "pub_prod_yqT7cQoKLazQB0qqbw4EnYqHpVNu2Qhl"
+    // PRUEBAS. Para cobrar de verdad, cambiar por la llave de producción: pub_prod_yqT7cQoKLazQB0qqbw4EnYqHpVNu2Qhl
+    // (y poner los secretos prod_integrity_ y prod_events_ en Cloudflare).
+    "WOMPI_PUBLIC_KEY": "pub_test_doxENR37St3FEG3SYiEtwffJZ5EJOLd7"
   }
 }
