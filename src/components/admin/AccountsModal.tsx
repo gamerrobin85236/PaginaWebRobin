@@ -2,40 +2,12 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, Copy, Eye, EyeOff, Trash2 } from 'lucide-react'
 import type { AccountType, Product } from '../../lib/types'
 import { addAccounts, deleteAccount, fetchAccounts, markAccountSold, updateAccountCode, type GameAccount } from '../../lib/adminApi'
+import { parseLines } from '../../lib/accountLines'
 import Modal from './Modal'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
 const MAX_LINES = 200
-
-/**
- * Cada línea es una cuenta:
- *   correo:clave                    (sin código)
- *   correo|clave|código             (con código de verificación; usa "|" para separar)
- */
-function parseLines(text: string): { rows: { login: string; secret: string; code: string }[]; bad: number } {
-  const rows: { login: string; secret: string; code: string }[] = []
-  let bad = 0
-  for (const raw of text.split('\n')) {
-    const line = raw.trim()
-    if (!line) continue
-    let login = ''
-    let secret = ''
-    let code = ''
-    if (line.includes('|')) {
-      const parts = line.split('|').map((x) => x.trim())
-      ;[login = '', secret = '', code = ''] = parts
-    } else {
-      const sep = line.includes('\t') ? '\t' : ':'
-      const idx = line.indexOf(sep)
-      login = idx > 0 ? line.slice(0, idx).trim() : ''
-      secret = idx > 0 ? line.slice(idx + 1).trim() : ''
-    }
-    if (login && secret) rows.push({ login, secret, code })
-    else bad++
-  }
-  return { rows, bad }
-}
 
 function AccountRow({ acc, onChange }: { acc: GameAccount; onChange: () => void }) {
   const [show, setShow] = useState(false)

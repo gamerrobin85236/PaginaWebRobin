@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import type { BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
-import { saveProduct, type ProductInput } from '../../lib/adminApi'
+import type { AccountType, BuyMode, Fulfillment, PriceOption, Product, Section } from '../../lib/types'
+import { addAccounts, saveProduct, saveProductWithId, type ProductInput } from '../../lib/adminApi'
+import { parseLines } from '../../lib/accountLines'
 import { PLATFORMS } from '../../lib/kinds'
 import { uploadImage } from '../../lib/storage'
 import { slugify } from '../../utils/slugify'
@@ -37,12 +38,14 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
   const [options, setOptions] = useState<OptionDraft[]>(
     (product?.options ?? []).map((o) => ({ label: o.label, price: String(o.price) })),
   )
-  const [fulfillment, setFulfillment] = useState<Fulfillment>(product?.fulfillment ?? 'manual')
+  const [fulfillment, setFulfillment] = useState<Fulfillment>(product?.fulfillment ?? (kind === 'digital' ? 'auto' : 'manual'))
   const [buyMode, setBuyMode] = useState<BuyMode>(product?.buyMode ?? 'whatsapp')
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [available, setAvailable] = useState(product?.available ?? true)
   const [position, setPosition] = useState(product?.position ?? 0)
   const [file, setFile] = useState<File | null>(null)
+  const [accText, setAccText] = useState('') // cuentas a cargar al crear (solo juego digital nuevo con entrega automática)
+  const [accType, setAccType] = useState<AccountType>('principal')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +85,12 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
         if (Number.isNaN(secondary) || secondary < 0) return setError('El precio de la cuenta secundaria no es válido.')
       }
       if (!product && platforms.length === 0) return setError('Elige al menos una plataforma.')
+      if (!product && fulfillment === 'auto' && accText.trim()) {
+        if (platforms.length !== 1) return setError('Para cargar cuentas aquí elige una sola plataforma (cada plataforma tiene sus propias cuentas).')
+        const parsed = parseLines(accText)
+        if (parsed.bad > 0) return setError(`${parsed.bad} línea(s) de las cuentas no tienen el formato correo:clave (o correo|clave|código).`)
+        if (parsed.rows.length > 200) return setError('Máximo 200 cuentas por vez.')
+      }
     }
     if (kind === 'physical') {
       stockNum = Number(stock)
@@ -119,9 +128,16 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
       const errors: string[] = []
       let saved = 0
       for (const plat of platforms) {
-        const err = await saveProduct({ ...common, platform: plat, slug: slugify(`${name} ${plat}`) })
-        if (err) errors.push(`${plat}: ${err}`)
-        else saved++
+        const res = await saveProductWithId({ ...common, platform: plat, slug: slugify(`${name} ${plat}`) })
+        if (res.error) {
+          errors.push(`${plat}: ${res.error}`)
+          continue
+        }
+        saved++
+        if (fulfillment === 'auto' && accText.trim() && platforms.length === 1 && res.id) {
+          const accErr = await addAccounts(res.id, accType, parseLines(accText).rows, '')
+          if (accErr) errors.push(`El juego se guardó, pero las cuentas no: ${accErr}. Cárgalas con el botón "Cuentas".`)
+        }
       }
       if (errors.length > 0) {
         return fail(`${saved > 0 ? `Se guardaron ${saved}, pero falló: ` : 'No se guardó: '}${errors.join(' · ')}`)
@@ -230,6 +246,50 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {kind === 'digital' && !product && fulfillment === 'auto' && (
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-3 flex flex-col gap-2">
+            <p className="text-sm font-semibold">Cuentas para entregar automáticamente</p>
+            <p className="text-xs text-muted">
+              Pega aquí las cuentas que tienes de este juego, una por línea. Cuando alguien pague, la página le entrega una
+              y le envía los datos por correo. Puedes agregar más después con el botón "Cuentas".
+            </p>
+            {platforms.length > 1 ? (
+              <p className="text-xs text-amber-400">
+                Elegiste varias plataformas: guarda primero y luego carga las cuentas de cada una con el botón "Cuentas".
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  {(['principal', 'secundaria'] as AccountType[]).map((t) => (
+                    <button
+                      type="button"
+                      key={t}
+                      onClick={() => setAccType(t)}
+                      className={`rounded-full border px-3 py-1 text-xs ${
+                        accType === t ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'
+                      }`}
+                    >
+                      {t === 'principal' ? 'Principal' : 'Secundaria'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  rows={4}
+                  className={`${inputCls} font-mono`}
+                  placeholder={'correo@gmail.com|clave123|código de verificación\ncorreo2@gmail.com:clave456'}
+                  value={accText}
+                  onChange={(e) => setAccText(e.target.value)}
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <p className="text-[11px] text-muted">
+                  Con código de verificación: correo|clave|código · Sin código: correo:clave
+                </p>
+              </>
+            )}
           </div>
         )}
 

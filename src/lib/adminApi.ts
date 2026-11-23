@@ -93,6 +93,11 @@ export async function fetchAdminProducts(sectionId?: string): Promise<Product[]>
 }
 
 export async function saveProduct(input: ProductInput, id?: string): Promise<string | null> {
+  return (await saveProductWithId(input, id)).error
+}
+
+/** Igual que saveProduct, pero devuelve también el id del producto (para cargar sus cuentas al crearlo). */
+export async function saveProductWithId(input: ProductInput, id?: string): Promise<{ error: string | null; id?: string }> {
   const row = {
     section_id: input.sectionId,
     name: input.name,
@@ -110,9 +115,12 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<str
     buy_mode: input.buyMode,
     position: input.position,
   }
-  const query = id ? db().from('products').update(row).eq('id', id) : db().from('products').insert(row)
-  const { error } = await query
-  return error ? friendly(error) : null
+  if (id) {
+    const { error } = await db().from('products').update(row).eq('id', id)
+    return { error: error ? friendly(error) : null, id }
+  }
+  const { data, error } = await db().from('products').insert(row).select('id').single()
+  return { error: error ? friendly(error) : null, id: (data as { id: string } | null)?.id }
 }
 
 export async function setProductAvailable(id: string, available: boolean): Promise<string | null> {

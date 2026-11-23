@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { CreditCard } from 'lucide-react'
 import type { CartItem } from '../hooks/useCart'
-import { createCheckout } from '../lib/checkoutApi'
+import { createCheckout, type Customer } from '../lib/checkoutApi'
 
 const inputCls =
   'w-full rounded-xl bg-bg border border-line px-3 py-2.5 text-sm focus:outline-none focus:border-primary'
@@ -9,17 +9,18 @@ const inputCls =
 // Los datos del cliente se recuerdan en este dispositivo para no escribirlos de nuevo.
 const KEY = 'gr_customer'
 
-function loadCustomer(): { name: string; email: string; phone: string } {
+function loadCustomer(): Customer {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return { name: '', email: '', phone: '', ...(JSON.parse(raw) as object) }
+    if (raw) return { name: '', email: '', emailConfirm: '', phone: '', ...(JSON.parse(raw) as object) }
   } catch {
     /* sin datos guardados */
   }
-  return { name: '', email: '', phone: '' }
+  return { name: '', email: '', emailConfirm: '', phone: '' }
 }
 
 export default function OnlineCheckout({ items }: { items: CartItem[] }) {
+  const hasAuto = items.some((i) => i.product.fulfillment === 'auto')
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(loadCustomer)
   const [busy, setBusy] = useState(false)
@@ -28,9 +29,12 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (form.email.trim().toLowerCase() !== form.emailConfirm.trim().toLowerCase()) {
+      return setError('Los dos correos no coinciden. Revísalos con calma.')
+    }
     setBusy(true)
     try {
-      localStorage.setItem(KEY, JSON.stringify(form))
+      localStorage.setItem(KEY, JSON.stringify({ ...form, emailConfirm: '' }))
     } catch {
       /* no pasa nada */
     }
@@ -75,6 +79,23 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
         value={form.email}
         onChange={(e) => setForm({ ...form, email: e.target.value })}
       />
+      <input
+        className={inputCls}
+        type="email"
+        placeholder="Confirma tu correo (escríbelo otra vez)"
+        autoComplete="off"
+        required
+        maxLength={254}
+        value={form.emailConfirm}
+        onChange={(e) => setForm({ ...form, emailConfirm: e.target.value })}
+        onPaste={(e) => e.preventDefault()}
+      />
+      {hasAuto && (
+        <p className="text-xs rounded-lg border border-primary/40 bg-primary/5 px-3 py-2">
+          📧 Tu cuenta llegará a <b>{form.email.trim() || 'tu correo'}</b> en cuanto se apruebe el pago. Revisa que esté
+          bien escrito.
+        </p>
+      )}
       <input
         className={inputCls}
         type="tel"

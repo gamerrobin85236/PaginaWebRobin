@@ -13,6 +13,8 @@ interface Env {
   SUPABASE_SERVICE_KEY: string // secreto
   WOMPI_INTEGRITY_SECRET: string // secreto
   WOMPI_EVENTS_SECRET: string // secreto
+  RESEND_API_KEY?: string // secreto (correos al cliente; si falta, no se envían)
+  EMAIL_FROM?: string // ej. "Gamer Robin <pedidos@robingames.shop>"
 }
 
 const WOMPI_CHECKOUT = 'https://checkout.wompi.co/p/'
@@ -104,7 +106,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
 
   const raw = await readBody(request, 20_000)
   if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
-  let body: { items?: unknown; customer?: { name?: unknown; email?: unknown; phone?: unknown } }
+  let body: { items?: unknown; customer?: { name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
   try {
     body = JSON.parse(raw)
   } catch {
@@ -117,6 +119,9 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
   const phone = String(body.customer?.phone ?? '').replace(/[^\d+]/g, '')
   if (name.length < 2 || name.length > 80) return json({ error: 'Escribe tu nombre.' }, 400)
   if (email.length > 254 || !EMAIL_RE.test(email)) return json({ error: 'El correo no es válido.' }, 400)
+  // El correo se escribe dos veces: ahí llegan las credenciales y un error significaría perderlas.
+  const emailConfirm = String(body.customer?.emailConfirm ?? '').trim().toLowerCase()
+  if (emailConfirm !== email) return json({ error: 'Los dos correos no coinciden. Revísalos.' }, 400)
   if (phone.replace(/\D/g, '').length < 7 || phone.length > 16) return json({ error: 'El celular no es válido.' }, 400)
 
   // --- productos pedidos
@@ -277,7 +282,96 @@ async function handleWebhook(request: Request, env: Env): Promise<Response> {
     p_status: tx.status,
     p_amount_cents: tx.amount_in_cents,
   })
+  // Solo en el momento en que el pedido pasa a pagado/entregado se envía el correo (un reenvío de Wompi no lo duplica).
+  if (result === 'entregado' || result === 'pagado') {
+    try {
+      await sendOrderEmail(env, tx.reference)
+    } catch (err) {
+      console.error('correo no enviado:', err instanceof Error ? err.message : err)
+    }
+  }
   return json({ ok: true, result })
+}
+
+// ---------------------------------------------------------------- correo al cliente (Resend)
+function esc(text: unknown): string {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function cop(value: number): string {
+  return `$${Math.round(value).toLocaleString('es-CO')}`
+}
+
+interface MailOrder {
+  id: string
+  public_ref: string
+  access_token: string
+  customer_name: string
+  customer_email: string
+  total: number | string
+  order_items: { id: string; product_name: string; option_label: string | null; quantity: number; fulfillment: string }[]
+}
+
+async function sendOrderEmail(env: Env, ref: string): Promise<void> {
+  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) return // correo no configurado: la página igual muestra los datos
+  const rows = await select<MailOrder>(
+    env,
+    `orders?public_ref=eq.${ref}&select=id,public_ref,access_token,customer_name,customer_email,total,order_items(id,product_name,option_label,quantity,fulfillment)`,
+  )
+  const order = rows[0]
+  if (!order) return
+  const accounts = await select<{ order_item_id: string; account_type: string; login: string; secret: string; verification_code: string; notes: string }>(
+    env,
+    `game_accounts?order_id=eq.${order.id}&select=order_item_id,account_type,login,secret,verification_code,notes`,
+  )
+
+  const link = `${env.SITE_URL}/pedido/${order.public_ref}?t=${order.access_token}`
+  const field = (label: string, value: string) =>
+    `<tr><td style="padding:6px 0;color:#6b7a70;font-size:12px;width:140px">${esc(label)}</td><td style="padding:6px 0;font-family:Consolas,monospace;font-size:15px;color:#111"><b>${esc(value)}</b></td></tr>`
+
+  const blocks = order.order_items
+    .map((it) => {
+      const mine = accounts.filter((a) => a.order_item_id === it.id)
+      const title = `${esc(it.product_name)}${it.option_label ? ` · ${esc(it.option_label)}` : ''} <span style="color:#6b7a70">x${it.quantity}</span>`
+      if (mine.length === 0) {
+        const msg = it.fulfillment === 'auto' ? 'Estamos preparando tu cuenta; te escribiremos muy pronto.' : 'Te lo enviaremos por WhatsApp en breve.'
+        return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p><p style="margin:0;color:#6b7a70;font-size:13px">${msg}</p></div>`
+      }
+      const cards = mine
+        .map(
+          (a) => `<table style="width:100%;border:1px solid #cfe9d6;background:#f3fbf5;border-radius:10px;padding:10px 14px;margin:8px 0" cellspacing="0">
+<tr><td colspan="2" style="color:#0a7a3a;font-size:12px;font-weight:bold;padding-bottom:4px">CUENTA ${a.account_type === 'secundaria' ? 'SECUNDARIA' : 'PRINCIPAL'}</td></tr>
+${field('Correo / usuario', a.login)}${field('Contraseña', a.secret)}${a.verification_code ? field('Código de verificación', a.verification_code) : ''}
+${a.notes ? `<tr><td colspan="2" style="padding-top:6px;color:#444;font-size:12px">${esc(a.notes)}</td></tr>` : ''}</table>`,
+        )
+        .join('')
+      return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p>${cards}</div>`
+    })
+    .join('')
+
+  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
+<h2 style="margin:0 0 4px">¡Gracias por tu compra, ${esc(order.customer_name.split(' ')[0])}! 🎮</h2>
+<p style="margin:0;color:#6b7a70;font-size:13px">Pedido ${esc(order.public_ref)} · Total ${cop(Number(order.total))}</p>
+${blocks}
+<p style="font-size:13px;color:#444">Guarda este correo: aquí están tus datos de acceso. También puedes verlos cuando quieras en <a href="${esc(link)}">la página de tu pedido</a> (es privada, no la compartas).</p>
+<p style="font-size:12px;color:#6b7a70">Si el código de verificación no te funciona o tienes cualquier problema, escríbenos por WhatsApp. No compartas estos datos con nadie.</p>
+</div>`
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from: env.EMAIL_FROM,
+      to: [order.customer_email],
+      subject: `Tu pedido ${order.public_ref} · datos de tu compra`,
+      html,
+    }),
+  })
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
 }
 
 // ---------------------------------------------------------------- GET /api/order

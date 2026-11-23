@@ -4,6 +4,7 @@ import type { CartItem } from '../hooks/useCart'
 export interface Customer {
   name: string
   email: string
+  emailConfirm: string
   phone: string
 }
 
