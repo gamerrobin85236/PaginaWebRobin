@@ -46,7 +46,7 @@ export default function Footer() {
         </div>
       </div>
       <PaymentMethods />
-      <p className="text-center text-xs text-muted pb-8">
+      <p className="text-center text-xs text-muted pb-24 md:pb-8 px-4">
         © {new Date().getFullYear()} {STORE_CONFIG.name}. Todos los derechos reservados. · Desarrollado por{' '}
         <span className="font-semibold text-ink">{STORE_CONFIG.developer}</span>
       </p>

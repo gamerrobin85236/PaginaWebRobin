@@ -58,7 +58,7 @@ export default function AccountRowsEditor({ drafts, onChange }: Props) {
                     type="button"
                     key={t}
                     onClick={() => set(i, { type: t })}
-                    className={`px-3 py-1.5 ${d.type === t ? 'bg-primary text-primary-ink font-semibold' : 'text-muted'}`}
+                    className={`px-3.5 py-2 sm:py-1.5 ${d.type === t ? 'bg-primary text-primary-ink font-semibold' : 'text-muted'}`}
                   >
                     {t === 'principal' ? 'Principal' : 'Secundaria'}
                   </button>
@@ -69,7 +69,7 @@ export default function AccountRowsEditor({ drafts, onChange }: Props) {
                   type="button"
                   onClick={() => onChange(drafts.filter((_, j) => j !== i))}
                   aria-label={`Quitar cuenta ${i + 1}`}
-                  className="p-1.5 text-muted hover:text-red-400"
+                  className="p-2.5 sm:p-1.5 text-muted hover:text-red-400"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

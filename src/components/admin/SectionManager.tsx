@@ -125,7 +125,7 @@ export default function SectionManager({ section, onBack }: Props) {
         </button>
       </div>
 
-      <div className="flex gap-2 mt-5 border-b border-line pb-3">
+      <div className="flex flex-wrap gap-2 mt-5 border-b border-line pb-3">
         {(
           [
             ['products', 'Productos'],
@@ -136,7 +136,7 @@ export default function SectionManager({ section, onBack }: Props) {
           <button
             key={value}
             onClick={() => setView(value)}
-            className={`px-4 py-1.5 text-sm font-semibold rounded-full border inline-flex items-center gap-1.5 ${
+            className={`px-4 py-2 text-sm font-semibold rounded-full border inline-flex items-center gap-1.5 ${
               view === value ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'
             }`}
           >
@@ -242,11 +242,11 @@ export default function SectionManager({ section, onBack }: Props) {
               <div className="flex items-center justify-between rounded-lg bg-bg border border-line px-3 py-1.5 text-sm">
                 <span className="text-xs text-muted">Unidades disponibles</span>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => changeStock(p, (p.stock ?? 0) - 1)} aria-label="Restar" className="p-1.5 hover:text-primary">
+                  <button onClick={() => changeStock(p, (p.stock ?? 0) - 1)} aria-label="Restar" className="p-2.5 sm:p-1.5 hover:text-primary">
                     <Minus className="w-3.5 h-3.5" />
                   </button>
                   <span className="w-7 text-center font-semibold">{p.stock ?? 0}</span>
-                  <button onClick={() => changeStock(p, (p.stock ?? 0) + 1)} aria-label="Sumar" className="p-1.5 hover:text-primary">
+                  <button onClick={() => changeStock(p, (p.stock ?? 0) + 1)} aria-label="Sumar" className="p-2.5 sm:p-1.5 hover:text-primary">
                     <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>

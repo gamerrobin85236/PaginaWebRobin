@@ -3,6 +3,7 @@ import { isOnlineOnly, type AccountType } from '../lib/types'
 import { getUnitPrice, lineKey } from '../hooks/useCart'
 import { useCartContext } from '../hooks/CartContext'
 import ProductImage from './ProductImage'
+import { useScrollLock } from '../hooks/useScrollLock'
 import OnlineCheckout from './OnlineCheckout'
 import { formatPrice } from '../utils/formatPrice'
 import { buildCartWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
@@ -14,6 +15,7 @@ const ACCOUNT_LABEL: Record<AccountType, string> = {
 
 export default function CartDrawer() {
   const { open, setOpen, items, total, updateQuantity, removeItem } = useCartContext()
+  useScrollLock(open)
   if (!open) return null
 
   const close = () => setOpen(false)
@@ -35,7 +37,7 @@ export default function CartDrawer() {
             <ShoppingCart className="w-5 h-5 text-primary" />
             Tu carrito
           </h2>
-          <button onClick={close} aria-label="Cerrar" className="text-muted hover:text-ink">
+          <button onClick={close} aria-label="Cerrar" className="text-muted hover:text-ink p-2 -mr-2">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -71,7 +73,7 @@ export default function CartDrawer() {
                     <div className="flex items-center gap-2 bg-bg border border-line rounded-full px-1">
                       <button
                         onClick={() => updateQuantity(lineKey(item), item.quantity - 1)}
-                        className="p-1 hover:text-primary"
+                        className="p-2 hover:text-primary"
                         aria-label="Restar"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -79,7 +81,7 @@ export default function CartDrawer() {
                       <span className="text-xs w-4 text-center">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(lineKey(item), item.quantity + 1)}
-                        className="p-1 hover:text-primary"
+                        className="p-2 hover:text-primary"
                         aria-label="Sumar"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -93,7 +95,7 @@ export default function CartDrawer() {
 
                 <button
                   onClick={() => removeItem(lineKey(item))}
-                  className="text-muted hover:text-danger shrink-0"
+                  className="text-muted hover:text-danger shrink-0 p-2 -mr-2"
                   aria-label="Eliminar del carrito"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -104,7 +106,7 @@ export default function CartDrawer() {
         )}
 
         {items.length > 0 && (
-          <div className="border-t border-line p-5 shrink-0">
+          <div className="border-t border-line px-5 pt-5 pb-safe shrink-0">
             <div className="flex items-center justify-between mb-4">
               <span className="text-muted text-sm">Total aproximado</span>
               <span className="text-lg font-display font-bold">{formatPrice(total)}</span>

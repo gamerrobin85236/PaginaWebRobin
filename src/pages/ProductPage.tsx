@@ -160,7 +160,7 @@ export default function ProductPage() {
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 aria-label="Restar"
-                className="p-1.5 hover:text-primary"
+                className="p-2.5 hover:text-primary"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -168,7 +168,7 @@ export default function ProductPage() {
               <button
                 onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
                 aria-label="Sumar"
-                className="p-1.5 hover:text-primary"
+                className="p-2.5 hover:text-primary"
               >
                 <Plus className="w-4 h-4" />
               </button>

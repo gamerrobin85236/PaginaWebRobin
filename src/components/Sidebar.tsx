@@ -1,3 +1,4 @@
+import { useScrollLock } from '../hooks/useScrollLock'
 import { NavLink } from 'react-router-dom'
 import { Store, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react'
 import { useCatalog } from '../hooks/CatalogContext'
@@ -57,6 +58,7 @@ export default function Sidebar({
   mobileOpen,
   onCloseMobile,
 }: SidebarProps) {
+  useScrollLock(mobileOpen)
   return (
     <>
       {/* Computador: barra fija a la izquierda, se puede contraer */}

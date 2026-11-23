@@ -40,7 +40,7 @@ export default function Header({ onOpenMenu }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 bg-bg/95 backdrop-blur border-b border-line">
-      <div className="flex items-center gap-3 px-4 h-16">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 h-16">
         <button
           onClick={onOpenMenu}
           aria-label="Abrir menú"
@@ -78,10 +78,11 @@ export default function Header({ onOpenMenu }: HeaderProps) {
 
         <Link
           to="/login"
-          className="flex items-center gap-2 rounded-lg bg-surface2 border border-line px-3 py-2 text-sm font-medium hover:border-primary/60 transition-colors"
+          aria-label="Iniciar sesión"
+          className="flex items-center gap-2 rounded-lg bg-surface2 border border-line p-2.5 sm:px-3 sm:py-2 text-sm font-medium hover:border-primary/60 transition-colors"
         >
           <LogIn className="w-4 h-4" />
-          <span>Iniciar sesión</span>
+          <span className="hidden sm:inline">Iniciar sesión</span>
         </Link>
       </div>
 

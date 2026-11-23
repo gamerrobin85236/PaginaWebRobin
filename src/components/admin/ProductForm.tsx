@@ -365,7 +365,7 @@ export default function ProductForm({ product, section, onDone, onClose }: Props
             />
           )
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-muted">{kind === 'digital' ? 'Precio cuenta principal' : 'Precio'}</label>
               <input type="number" inputMode="numeric" className={inputCls} value={price} onChange={(e) => setPrice(e.target.value)} />

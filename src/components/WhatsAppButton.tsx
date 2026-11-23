@@ -40,7 +40,7 @@ export default function WhatsAppButton() {
   }, [open])
 
   return (
-    <div ref={box} className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+    <div ref={box} className="fixed right-4 sm:right-5 z-40 flex flex-col items-end gap-3 bottom-[max(1.25rem,env(safe-area-inset-bottom))]">
       {open && (
         <div
           role="dialog"

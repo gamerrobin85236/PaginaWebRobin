@@ -4,6 +4,7 @@ import Header from './Header'
 import Sidebar from './Sidebar'
 import Footer from './Footer'
 import WhatsAppButton from './WhatsAppButton'
+import { useLocation } from 'react-router-dom'
 import CartDrawer from './CartDrawer'
 
 const COLLAPSE_KEY = 'gamer_robin_sidebar_collapsed'
@@ -19,6 +20,9 @@ function readCollapsed(): boolean {
 export default function Layout() {
   const [collapsed, setCollapsed] = useState<boolean>(readCollapsed)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { pathname } = useLocation()
+  // El botón flotante de atención es para clientes: en el panel y el login estorba.
+  const showSupport = !pathname.startsWith('/admin') && !pathname.startsWith('/login')
 
   function toggleCollapsed() {
     setCollapsed((value) => {
@@ -33,7 +37,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen-d flex flex-col">
       <Header onOpenMenu={() => setMobileOpen(true)} />
       <div className="flex flex-1">
         <Sidebar
@@ -49,7 +53,7 @@ export default function Layout() {
           <Footer />
         </div>
       </div>
-      <WhatsAppButton />
+      {showSupport && <WhatsAppButton />}
       <CartDrawer />
     </div>
   )

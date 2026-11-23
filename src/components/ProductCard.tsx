@@ -50,7 +50,7 @@ export default function ProductCard({ product, onAdd, className = '', eager = fa
           )}
         </div>
 
-        <div className="p-4 flex flex-col gap-1 flex-1">
+        <div className="p-3 sm:p-4 flex flex-col gap-1 flex-1">
           <h3 className="text-sm font-semibold leading-snug line-clamp-2">{product.name}</h3>
           <div className="mt-auto pt-2">
             <p className="text-base font-bold">
@@ -73,7 +73,7 @@ export default function ProductCard({ product, onAdd, className = '', eager = fa
         <Link
           to={`/producto/${product.slug}`}
           aria-label={`Ver opciones de ${product.name}`}
-          className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-primary text-primary-ink flex items-center justify-center hover:brightness-110 transition"
+          className="absolute top-[7.9rem] right-2.5 w-10 h-10 rounded-full bg-primary text-primary-ink shadow-lg shadow-black/40 flex items-center justify-center hover:brightness-110 active:scale-95 transition"
         >
           <Plus className="w-5 h-5" />
         </Link>
@@ -81,7 +81,7 @@ export default function ProductCard({ product, onAdd, className = '', eager = fa
         <button
           onClick={() => onAdd(product)}
           aria-label={`Agregar ${product.name} al carrito`}
-          className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-primary text-primary-ink flex items-center justify-center hover:brightness-110 transition"
+          className="absolute top-[7.9rem] right-2.5 w-10 h-10 rounded-full bg-primary text-primary-ink shadow-lg shadow-black/40 flex items-center justify-center hover:brightness-110 active:scale-95 transition"
         >
           <Plus className="w-5 h-5" />
         </button>

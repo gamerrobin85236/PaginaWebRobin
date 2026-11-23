@@ -12,6 +12,7 @@ import {
   type GameAccount,
 } from '../../lib/adminApi'
 import { isPlayStation } from '../../lib/platform'
+import { useScrollLock } from '../../hooks/useScrollLock'
 import AccountRowsEditor, { emptyAccount, readAccounts, type AccountDraft } from './AccountRowsEditor'
 
 const fieldCls =
@@ -133,11 +134,11 @@ function AccountCard({ acc, index, needsCode, buyer, onChange }: CardProps) {
             </span>
           )}
         </p>
-        <div className="flex items-center -mt-1 -mr-1">
-          <button onClick={copy} aria-label="Copiar datos" className="p-1.5 text-muted hover:text-primary">
+        <div className="flex items-center -mt-2 -mr-2 sm:-mt-1 sm:-mr-1">
+          <button onClick={copy} aria-label="Copiar datos" className="p-2.5 sm:p-1.5 text-muted hover:text-primary">
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </button>
-          <button onClick={() => setEditing(true)} aria-label="Editar" className="p-1.5 text-muted hover:text-primary">
+          <button onClick={() => setEditing(true)} aria-label="Editar" className="p-2.5 sm:p-1.5 text-muted hover:text-primary">
             <Pencil className="w-4 h-4" />
           </button>
           <button
@@ -147,7 +148,7 @@ function AccountCard({ acc, index, needsCode, buyer, onChange }: CardProps) {
               onChange()
             }}
             aria-label="Eliminar"
-            className="p-1.5 text-muted hover:text-red-400"
+            className="p-2.5 sm:p-1.5 text-muted hover:text-red-400"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -186,7 +187,7 @@ function AccountCard({ acc, index, needsCode, buyer, onChange }: CardProps) {
             await markAccountAvailable(acc.id)
             onChange()
           }}
-          className="mt-2 text-xs text-primary underline"
+          className="mt-1 py-2 text-xs text-primary underline"
         >
           Devolver a disponibles
         </button>
@@ -198,7 +199,7 @@ function AccountCard({ acc, index, needsCode, buyer, onChange }: CardProps) {
             await markAccountSold(acc.id)
             onChange()
           }}
-          className="mt-2 text-xs text-muted hover:text-primary underline"
+          className="mt-1 py-2 text-xs text-muted hover:text-primary underline"
         >
           Marcar como vendida (la vendí por otro lado)
         </button>
@@ -218,6 +219,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  useScrollLock()
   const ps = isPlayStation(product)
 
   const load = useCallback(() => {
@@ -262,7 +264,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
         setError(null)
         setInfo(null)
       }}
-      className={`px-4 py-2 text-sm font-semibold rounded-full border ${view === v ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'}`}
+      className={`px-4 py-2.5 text-sm font-semibold rounded-full border ${view === v ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'}`}
     >
       {label}
     </button>
@@ -284,13 +286,13 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-2xl max-h-[92vh] flex flex-col bg-surface border border-line rounded-2xl">
+      <div className="w-full max-w-2xl max-h-modal flex flex-col bg-surface border border-line rounded-2xl">
         <div className="shrink-0 flex items-start justify-between gap-3 px-5 py-3 border-b border-line">
           <div className="min-w-0">
             <h2 className="font-display font-bold text-lg leading-tight">Cuentas · {product.name}</h2>
             {product.platform && <p className="text-xs text-primary mt-0.5">{product.platform}</p>}
           </div>
-          <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-ink shrink-0">
+          <button onClick={onClose} aria-label="Cerrar" className="text-muted hover:text-ink shrink-0 p-2 -mr-2 -mt-1">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -363,7 +365,7 @@ export default function AccountsModal({ product, onClose }: { product: Product; 
           )}
         </div>
 
-        <div className="shrink-0 px-5 py-3 border-t border-line">
+        <div className="shrink-0 px-5 pt-3 pb-safe border-t border-line">
           <button onClick={onClose} className="text-sm text-muted hover:text-ink">
             Cerrar
           </button>

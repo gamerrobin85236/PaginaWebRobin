@@ -48,7 +48,7 @@ function ShipBox({ o, busy, onShip }: { o: AdminOrder; busy: boolean; onShip: (t
         aria-label={`Guía del pedido ${o.ref}`}
         className="flex-1 min-w-[180px] rounded-lg bg-bg border border-line px-3 py-1.5 text-xs focus:outline-none focus:border-primary"
       />
-      <button disabled={busy} onClick={() => onShip(tracking)} className="rounded-lg bg-primary text-primary-ink px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
+      <button disabled={busy} onClick={() => onShip(tracking)} className="rounded-lg bg-primary text-primary-ink px-3.5 py-2.5 text-xs font-semibold disabled:opacity-50">
         Marcar como enviado
       </button>
     </div>
@@ -118,11 +118,11 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = 
 
   const visible = orders.filter((o) => !filter || o.status === filter)
   const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1 text-xs ${active ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'}`
+    `rounded-full border px-3.5 py-2 text-xs ${active ? 'border-primary bg-primary/10 text-primary' : 'border-line text-muted'}`
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <h2 className="font-display font-bold text-xl">{title}</h2>
         <button onClick={load} className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary">
           <RefreshCw className="w-4 h-4" /> Actualizar
@@ -202,7 +202,7 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = 
                   href={whatsappTo(o.phone, `Hola ${o.name}, te escribimos de Gamer Robin por tu pedido ${o.ref}.`)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary/60 px-3 py-1.5 text-xs font-semibold text-primary"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary/60 px-3.5 py-2.5 text-xs font-semibold text-primary"
                 >
                   <MessageCircle className="w-3.5 h-3.5" /> Escribir al cliente
                 </a>
@@ -211,7 +211,7 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = 
                 <button
                   disabled={busy === o.id}
                   onClick={() => act(o.id, () => retryDelivery(o.id))}
-                  className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-primary disabled:opacity-50"
+                  className="rounded-lg border border-line px-3.5 py-2.5 text-xs text-muted hover:text-primary disabled:opacity-50"
                 >
                   Reintentar entrega automática
                 </button>
@@ -223,7 +223,7 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = 
                 <button
                   disabled={busy === o.id}
                   onClick={() => act(o.id, () => markOrderDelivered(o.id))}
-                  className="rounded-lg bg-primary text-primary-ink px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                  className="rounded-lg bg-primary text-primary-ink px-3.5 py-2.5 text-xs font-semibold disabled:opacity-50"
                 >
                   {o.shipping ? 'Marcar como recibido por el cliente' : 'Marcar como entregado'}
                 </button>

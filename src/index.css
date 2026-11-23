@@ -7,7 +7,23 @@
 body {
   @apply bg-bg text-ink font-sans antialiased;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
+
+/* Celular: los campos de texto a 16px evitan que iPhone amplíe la pantalla al tocarlos */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Alto de pantalla real en celulares (la barra del navegador sube y baja) */
+.h-screen-d { min-height: 100vh; min-height: 100dvh; }
+.max-h-modal { max-height: 92vh; max-height: 92dvh; }
+.pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
 
 html {
   overflow-x: hidden;
