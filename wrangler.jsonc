@@ -12,6 +12,10 @@
   // Datos públicos (no secretos). Los secretos se cargan en Cloudflare: Settings → Variables and Secrets.
   "vars": {
     "SITE_URL": "https://robingames.shop",
+    "WHATSAPP_NUMBER": "573103750355",
+    "SUPABASE_PUBLIC_KEY": "sb_publishable__pjIsxwldfUoQnHfXiFM0g_XVH42kIY",
+    // Remitente de los correos. El dominio debe estar verificado en Resend.
+    "EMAIL_FROM": "Gamer Robin <pedidos@robingames.shop>",
     "SUPABASE_URL": "https://crpkfnyoiroeapnhlhyq.supabase.co",
     // PRUEBAS. Para cobrar de verdad, cambiar por la llave de producción: pub_prod_yqT7cQoKLazQB0qqbw4EnYqHpVNu2Qhl
     // (y poner los secretos prod_integrity_ y prod_events_ en Cloudflare).

@@ -313,3 +313,65 @@ export async function retryDelivery(id: string): Promise<string | null> {
   const { error } = await db().rpc('admin_retry_delivery', { p_order: id })
   return error ? friendly(error) : null
 }
+
+// ---------- Correo que recibe el cliente ----------
+export interface EmailSettings {
+  subject: string
+  intro: string
+  footer: string
+}
+
+export const EMAIL_DEFAULTS: EmailSettings = {
+  subject: 'Tu pedido {pedido} · datos de tu compra',
+  intro: '¡Gracias por tu compra, {nombre}! Aquí tienes los datos de tu pedido.',
+  footer:
+    'Guarda este correo: aquí están tus datos de acceso. Si el código de verificación no te funciona o tienes cualquier problema, escríbenos por WhatsApp. No compartas estos datos con nadie.',
+}
+
+export async function fetchEmailSettings(): Promise<EmailSettings> {
+  const { data, error } = await db().from('store_settings').select('key,value').in('key', ['email_subject', 'email_intro', 'email_footer'])
+  if (error) {
+    if (error.code === '42P01' || /store_settings/.test(error.message))
+      throw new Error('Falta ejecutar migracion_correo.sql en Supabase.')
+    throw new Error(friendly(error))
+  }
+  const map = new Map((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]))
+  return {
+    subject: map.get('email_subject')?.trim() || EMAIL_DEFAULTS.subject,
+    intro: map.get('email_intro')?.trim() || EMAIL_DEFAULTS.intro,
+    footer: map.get('email_footer')?.trim() || EMAIL_DEFAULTS.footer,
+  }
+}
+
+export async function saveEmailSettings(s: EmailSettings): Promise<string | null> {
+  const { error } = await db()
+    .from('store_settings')
+    .upsert(
+      [
+        { key: 'email_subject', value: s.subject.trim(), updated_at: new Date().toISOString() },
+        { key: 'email_intro', value: s.intro.trim(), updated_at: new Date().toISOString() },
+        { key: 'email_footer', value: s.footer.trim(), updated_at: new Date().toISOString() },
+      ],
+      { onConflict: 'key' },
+    )
+  return error ? friendly(error) : null
+}
+
+/** Pide al servidor que envíe un correo de ejemplo (con los textos guardados) a la dirección indicada. */
+export async function sendTestEmail(to: string): Promise<string | null> {
+  const { data } = await db().auth.getSession()
+  const token = data.session?.access_token
+  if (!token) return 'Tu sesión venció. Entra de nuevo.'
+  try {
+    const res = await fetch('/api/test-email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ to }),
+    })
+    if (res.ok) return null
+    const body = (await res.json().catch(() => ({}))) as { error?: string }
+    return body.error ?? 'No se pudo enviar el correo de prueba.'
+  } catch {
+    return 'No hay conexión. Revisa tu internet.'
+  }
+}

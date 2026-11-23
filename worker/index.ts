@@ -15,6 +15,8 @@ interface Env {
   WOMPI_EVENTS_SECRET: string // secreto
   RESEND_API_KEY?: string // secreto (correos al cliente; si falta, no se envían)
   EMAIL_FROM?: string // ej. "Gamer Robin <pedidos@robingames.shop>"
+  SUPABASE_PUBLIC_KEY?: string // llave publicable (para comprobar que quien pide un correo de prueba es administrador)
+  WHATSAPP_NUMBER?: string
 }
 
 const WOMPI_CHECKOUT = 'https://checkout.wompi.co/p/'
@@ -306,6 +308,109 @@ function cop(value: number): string {
   return `$${Math.round(value).toLocaleString('es-CO')}`
 }
 
+// Textos del correo que Robin puede editar en el panel (tabla store_settings). {nombre} y {pedido} se reemplazan.
+const EMAIL_DEFAULTS = {
+  email_subject: 'Tu pedido {pedido} · datos de tu compra',
+  email_intro: '¡Gracias por tu compra, {nombre}! Aquí tienes los datos de tu pedido.',
+  email_footer:
+    'Guarda este correo: aquí están tus datos de acceso. Si el código de verificación no te funciona o tienes cualquier problema, escríbenos por WhatsApp. No compartas estos datos con nadie.',
+}
+type EmailTexts = typeof EMAIL_DEFAULTS
+
+async function loadEmailTexts(env: Env): Promise<EmailTexts> {
+  const texts: EmailTexts = { ...EMAIL_DEFAULTS }
+  try {
+    const rows = await select<{ key: string; value: string }>(
+      env,
+      'store_settings?select=key,value&key=in.(email_subject,email_intro,email_footer)',
+    )
+    for (const r of rows) {
+      if (r.key in texts && r.value.trim()) texts[r.key as keyof EmailTexts] = r.value.trim().slice(0, 2000)
+    }
+  } catch {
+    /* si la tabla aún no existe se usan los textos por defecto */
+  }
+  return texts
+}
+
+interface MailAccount {
+  account_type: string
+  login: string
+  secret: string
+  verification_code: string
+  notes: string
+}
+interface MailItem {
+  product_name: string
+  option_label: string | null
+  quantity: number
+  fulfillment: string
+  accounts: MailAccount[]
+}
+interface MailData {
+  ref: string
+  name: string
+  total: number
+  link: string
+  items: MailItem[]
+}
+
+function fill(text: string, data: MailData): string {
+  return text.replace(/\{nombre\}/g, data.name.split(' ')[0]).replace(/\{pedido\}/g, data.ref)
+}
+
+function renderEmail(env: Env, texts: EmailTexts, data: MailData): { subject: string; html: string } {
+  const para = (t: string) => esc(fill(t, data)).replace(/\n/g, '<br>')
+  const field = (label: string, value: string) =>
+    `<tr><td style="padding:6px 0;color:#6b7a70;font-size:12px;width:130px;vertical-align:top">${esc(label)}</td><td style="padding:6px 0;font-family:Consolas,monospace;font-size:15px;color:#111;word-break:break-all"><b>${esc(value)}</b></td></tr>`
+
+  const blocks = data.items
+    .map((it) => {
+      const title = `${esc(it.product_name)}${it.option_label ? ` · ${esc(it.option_label)}` : ''} <span style="color:#6b7a70">x${it.quantity}</span>`
+      if (it.accounts.length === 0) {
+        const msg = it.fulfillment === 'auto' ? 'Estamos preparando tu cuenta; te escribiremos muy pronto.' : 'Te lo enviaremos por WhatsApp en breve.'
+        return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p><p style="margin:0;color:#6b7a70;font-size:13px">${msg}</p></div>`
+      }
+      const cards = it.accounts
+        .map(
+          (a) => `<table role="presentation" style="width:100%;border:1px solid #bfe6cb;background:#f1fbf4;border-radius:10px;margin:8px 0" cellspacing="0" cellpadding="10"><tr><td>
+<p style="margin:0 0 4px;color:#0a7a3a;font-size:12px;font-weight:bold">CUENTA ${a.account_type === 'secundaria' ? 'SECUNDARIA' : 'PRINCIPAL'}</p>
+<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%">${field('Correo / usuario', a.login)}${field('Contraseña', a.secret)}${a.verification_code ? field('Código de verificación', a.verification_code) : ''}</table>
+${a.notes ? `<p style="margin:6px 0 0;color:#444;font-size:12px">${esc(a.notes)}</p>` : ''}</td></tr></table>`,
+        )
+        .join('')
+      return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p>${cards}</div>`
+    })
+    .join('')
+
+  const wa = env.WHATSAPP_NUMBER ? `https://wa.me/${env.WHATSAPP_NUMBER}` : ''
+  const html = `<!doctype html><html><body style="margin:0;background:#eef2ef">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2ef"><tr><td align="center" style="padding:20px 10px">
+<table role="presentation" width="560" cellspacing="0" cellpadding="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#111">
+<tr><td align="center" style="background:#000000;padding:18px"><img src="${esc(env.SITE_URL)}/logo-email.png" width="120" height="120" alt="Gamer Robin" style="display:block;border:0"></td></tr>
+<tr><td style="padding:24px 26px">
+<h2 style="margin:0 0 8px;font-size:20px">${para(texts.email_intro)}</h2>
+<p style="margin:0;color:#6b7a70;font-size:13px">Pedido ${esc(data.ref)} · Total ${cop(data.total)}</p>
+${blocks}
+<p style="margin:20px 0 14px;font-size:13px;color:#333;line-height:1.5">${para(texts.email_footer)}</p>
+<p style="margin:0 0 6px"><a href="${esc(data.link)}" style="display:inline-block;background:#16c75a;color:#04210f;text-decoration:none;font-weight:bold;font-size:14px;padding:11px 20px;border-radius:999px">Ver mi pedido</a>
+${wa ? ` <a href="${esc(wa)}" style="display:inline-block;border:1px solid #16c75a;color:#0a7a3a;text-decoration:none;font-weight:bold;font-size:14px;padding:10px 20px;border-radius:999px">Escribir por WhatsApp</a>` : ''}</p>
+<p style="margin:14px 0 0;font-size:11px;color:#8a978f">La página de tu pedido es privada: no compartas el enlace.</p>
+</td></tr>
+<tr><td align="center" style="background:#f6f8f7;padding:12px;font-size:11px;color:#8a978f">Gamer Robin · Santa Rosa de Cabal</td></tr>
+</table></td></tr></table></body></html>`
+  return { subject: fill(texts.email_subject, data), html }
+}
+
+async function resendSend(env: Env, to: string, mail: { subject: string; html: string }): Promise<void> {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: env.EMAIL_FROM, to: [to], subject: mail.subject, html: mail.html }),
+  })
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
+}
+
 interface MailOrder {
   id: string
   public_ref: string
@@ -324,54 +429,75 @@ async function sendOrderEmail(env: Env, ref: string): Promise<void> {
   )
   const order = rows[0]
   if (!order) return
-  const accounts = await select<{ order_item_id: string; account_type: string; login: string; secret: string; verification_code: string; notes: string }>(
+  const accounts = await select<MailAccount & { order_item_id: string }>(
     env,
     `game_accounts?order_id=eq.${order.id}&select=order_item_id,account_type,login,secret,verification_code,notes`,
   )
+  const data: MailData = {
+    ref: order.public_ref,
+    name: order.customer_name,
+    total: Number(order.total),
+    link: `${env.SITE_URL}/pedido/${order.public_ref}?t=${order.access_token}`,
+    items: order.order_items.map((it) => ({
+      product_name: it.product_name,
+      option_label: it.option_label,
+      quantity: it.quantity,
+      fulfillment: it.fulfillment,
+      accounts: accounts.filter((a) => a.order_item_id === it.id),
+    })),
+  }
+  await resendSend(env, order.customer_email, renderEmail(env, await loadEmailTexts(env), data))
+}
 
-  const link = `${env.SITE_URL}/pedido/${order.public_ref}?t=${order.access_token}`
-  const field = (label: string, value: string) =>
-    `<tr><td style="padding:6px 0;color:#6b7a70;font-size:12px;width:140px">${esc(label)}</td><td style="padding:6px 0;font-family:Consolas,monospace;font-size:15px;color:#111"><b>${esc(value)}</b></td></tr>`
-
-  const blocks = order.order_items
-    .map((it) => {
-      const mine = accounts.filter((a) => a.order_item_id === it.id)
-      const title = `${esc(it.product_name)}${it.option_label ? ` · ${esc(it.option_label)}` : ''} <span style="color:#6b7a70">x${it.quantity}</span>`
-      if (mine.length === 0) {
-        const msg = it.fulfillment === 'auto' ? 'Estamos preparando tu cuenta; te escribiremos muy pronto.' : 'Te lo enviaremos por WhatsApp en breve.'
-        return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p><p style="margin:0;color:#6b7a70;font-size:13px">${msg}</p></div>`
-      }
-      const cards = mine
-        .map(
-          (a) => `<table style="width:100%;border:1px solid #cfe9d6;background:#f3fbf5;border-radius:10px;padding:10px 14px;margin:8px 0" cellspacing="0">
-<tr><td colspan="2" style="color:#0a7a3a;font-size:12px;font-weight:bold;padding-bottom:4px">CUENTA ${a.account_type === 'secundaria' ? 'SECUNDARIA' : 'PRINCIPAL'}</td></tr>
-${field('Correo / usuario', a.login)}${field('Contraseña', a.secret)}${a.verification_code ? field('Código de verificación', a.verification_code) : ''}
-${a.notes ? `<tr><td colspan="2" style="padding-top:6px;color:#444;font-size:12px">${esc(a.notes)}</td></tr>` : ''}</table>`,
-        )
-        .join('')
-      return `<div style="margin:18px 0"><p style="margin:0 0 6px;font-weight:bold">${title}</p>${cards}</div>`
-    })
-    .join('')
-
-  const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111">
-<h2 style="margin:0 0 4px">¡Gracias por tu compra, ${esc(order.customer_name.split(' ')[0])}! 🎮</h2>
-<p style="margin:0;color:#6b7a70;font-size:13px">Pedido ${esc(order.public_ref)} · Total ${cop(Number(order.total))}</p>
-${blocks}
-<p style="font-size:13px;color:#444">Guarda este correo: aquí están tus datos de acceso. También puedes verlos cuando quieras en <a href="${esc(link)}">la página de tu pedido</a> (es privada, no la compartas).</p>
-<p style="font-size:12px;color:#6b7a70">Si el código de verificación no te funciona o tienes cualquier problema, escríbenos por WhatsApp. No compartas estos datos con nadie.</p>
-</div>`
-
-  const res = await fetch('https://api.resend.com/emails', {
+// ---------------------------------------------------------------- POST /api/test-email (solo administradores)
+async function handleTestEmail(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
+  if (request.headers.get('Origin') !== url.origin) return json({ error: 'Origen no permitido.' }, 403)
+  if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
+    return json({ error: 'Falta configurar el envío de correos (RESEND_API_KEY y EMAIL_FROM).' }, 503)
+  }
+  // Solo un administrador con sesión iniciada puede enviar correos de prueba.
+  const auth = request.headers.get('Authorization') ?? ''
+  if (!auth.startsWith('Bearer ') || !env.SUPABASE_PUBLIC_KEY) return json({ error: 'No autorizado.' }, 401)
+  const adminRes = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/is_admin`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: [order.customer_email],
-      subject: `Tu pedido ${order.public_ref} · datos de tu compra`,
-      html,
-    }),
+    headers: { apikey: env.SUPABASE_PUBLIC_KEY, Authorization: auth, 'content-type': 'application/json' },
+    body: '{}',
   })
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
+  if (!adminRes.ok || (await adminRes.json()) !== true) return json({ error: 'No autorizado.' }, 403)
+
+  const raw = await readBody(request, 2_000)
+  let to = ''
+  try {
+    to = String((JSON.parse(raw ?? '{}') as { to?: unknown }).to ?? '').trim()
+  } catch {
+    /* sin cuerpo */
+  }
+  if (to.length > 254 || !EMAIL_RE.test(to)) return json({ error: 'Escribe un correo válido.' }, 400)
+
+  const data: MailData = {
+    ref: 'GR-EJEMPLO000000000',
+    name: 'Cliente de Ejemplo',
+    total: 80000,
+    link: `${env.SITE_URL}/`,
+    items: [
+      {
+        product_name: 'Juego de ejemplo (PS5)',
+        option_label: null,
+        quantity: 1,
+        fulfillment: 'auto',
+        accounts: [
+          { account_type: 'principal', login: 'ejemplo@correo.com', secret: 'ClaveDeEjemplo123', verification_code: '123456', notes: '' },
+        ],
+      },
+    ],
+  }
+  try {
+    await resendSend(env, to, renderEmail(env, await loadEmailTexts(env), data))
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : 'No se pudo enviar.' }, 502)
+  }
+  return json({ ok: true })
 }
 
 // ---------------------------------------------------------------- GET /api/order
@@ -439,6 +565,7 @@ export default {
       if (url.pathname === '/api/checkout') return await handleCheckout(request, env, url)
       if (url.pathname === '/api/wompi-webhook') return await handleWebhook(request, env)
       if (url.pathname === '/api/order') return await handleOrder(request, env, url)
+      if (url.pathname === '/api/test-email') return await handleTestEmail(request, env, url)
       if (url.pathname.startsWith('/api/')) return json({ error: 'No existe.' }, 404)
       return await env.ASSETS.fetch(request)
     } catch (err) {

@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { checkIsAdmin } from '../lib/adminApi'
 import AdminDashboard from '../components/admin/AdminDashboard'
+import EmailAdmin from '../components/admin/EmailAdmin'
 import OrdersAdmin from '../components/admin/OrdersAdmin'
 import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
@@ -11,7 +12,7 @@ import SectionsAdmin from '../components/admin/SectionsAdmin'
 
 const IDLE_MS = 10 * 60 * 1000 // cierre de sesión por inactividad
 
-type Tab = 'categories' | 'orders' | 'sections'
+type Tab = 'categories' | 'orders' | 'email' | 'sections'
 
 export default function AdminPage() {
   const { session, isAuthenticated, loading, signOut } = useAuth()
@@ -87,7 +88,7 @@ export default function AdminPage() {
         <h1 className="font-display font-bold text-3xl">Panel de administración</h1>
         {logout}
       </div>
-      <div className="flex gap-2 my-5">
+      <div className="flex flex-wrap gap-2 my-5">
         <button
           className={tabCls('categories')}
           onClick={() => {
@@ -100,6 +101,9 @@ export default function AdminPage() {
         <button className={tabCls('orders')} onClick={() => setTab('orders')}>
           Pedidos
         </button>
+        <button className={tabCls('email')} onClick={() => setTab('email')}>
+          Correo al cliente
+        </button>
         <button className={tabCls('sections')} onClick={() => setTab('sections')}>
           Configurar secciones
         </button>
@@ -108,6 +112,8 @@ export default function AdminPage() {
         <SectionsAdmin />
       ) : tab === 'orders' ? (
         <OrdersAdmin />
+      ) : tab === 'email' ? (
+        <EmailAdmin />
       ) : managing ? (
         <SectionManager section={managing} onBack={() => setManaging(null)} />
       ) : (
