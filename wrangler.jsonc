@@ -13,6 +13,6 @@
   "vars": {
     "SITE_URL": "https://robingames.shop",
     "SUPABASE_URL": "https://crpkfnyoiroeapnhlhyq.supabase.co",
-    "WOMPI_PUBLIC_KEY": ""
+    "WOMPI_PUBLIC_KEY": "pub_prod_yqT7cQoKLazQB0qqbw4EnYqHpVNu2Qhl"
   }
 }
