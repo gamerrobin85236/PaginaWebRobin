@@ -108,7 +108,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
 
   const raw = await readBody(request, 20_000)
   if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
-  let body: { items?: unknown; shipping?: Record<string, unknown>; customer?: { name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
+  let body: { items?: unknown; customer?: { shipping?: Record<string, unknown>; name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
   try {
     body = JSON.parse(raw)
   } catch {
@@ -210,7 +210,7 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
   // --- datos de envío (solo si hay productos físicos o consolas)
   let shipping: { document: string; department: string; city: string; address: string; notes: string } | null = null
   if (needsShipping) {
-    const sh = body.shipping ?? {}
+    const sh = body.customer?.shipping ?? {}
     const clean = (v: unknown, max: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max)
     shipping = {
       document: clean(sh.document, 20).replace(/[^\dA-Za-z.-]/g, ''),
