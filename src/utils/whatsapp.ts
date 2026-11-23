@@ -4,8 +4,8 @@ import type { CartItem } from '../hooks/useCart'
 import { getUnitPrice } from '../hooks/useCart'
 import { formatPrice } from './formatPrice'
 
-export function buildWhatsAppLink(message: string): string {
-  return `https://wa.me/${STORE_CONFIG.whatsappNumber}?text=${encodeURIComponent(message)}`
+export function buildWhatsAppLink(message: string, number: string = STORE_CONFIG.whatsappNumber): string {
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 
 const ACCOUNT_LABEL: Record<AccountType, string> = {
