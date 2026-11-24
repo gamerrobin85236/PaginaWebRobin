@@ -16,7 +16,7 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
       to={`/seccion/${section.slug}`}
       className="group flex flex-col overflow-hidden rounded-2xl bg-surface border border-line hover:border-primary/50 transition-colors"
     >
-      <div className="relative h-40 sm:h-44 overflow-hidden bg-gradient-to-br from-primary/25 via-surface2 to-surface">
+      <div className="relative isolate h-40 sm:h-44 overflow-hidden bg-gradient-to-br from-primary/25 via-surface2 to-surface">
         {section.coverUrl ? (
           <img
             src={section.coverUrl}
@@ -24,6 +24,22 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
+        ) : section.kind === 'digital' ? (
+          // Imagen de consolas en tono verde de la tienda, que se funde hacia abajo con la tarjeta.
+          <>
+            <img
+              src="/banners/consolas.webp"
+              alt=""
+              aria-hidden="true"
+              width={1088}
+              height={606}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover grayscale contrast-125 opacity-70 blur-[1.5px] scale-105 group-hover:scale-110 transition-transform duration-500"
+            />
+            <div className="absolute inset-0 bg-primary/40 mix-blend-color" />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Icon className="w-16 h-16 text-primary/70 group-hover:scale-110 transition-transform duration-300" />
