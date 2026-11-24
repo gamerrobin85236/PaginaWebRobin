@@ -37,6 +37,10 @@ export default function LoginPage() {
     setError(null)
     const result = await signIn(cleanEmail, password)
     setSubmitting(false)
+    if (result.error && /internet|conexión|tardó/i.test(result.error)) {
+      setError(result.error) // problema de red: no cuenta como intento fallido
+      return
+    }
     if (result.error) {
       registerFailure()
       setLocked(lockedSeconds())

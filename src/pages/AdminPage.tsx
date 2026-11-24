@@ -42,9 +42,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (!userId) return
     let cancelled = false
-    checkIsAdmin(userId).then((ok) => {
-      if (!cancelled) setIsAdmin(ok)
-    })
+    checkIsAdmin(userId)
+      .catch(() => false)
+      .then((ok) => {
+        if (!cancelled) setIsAdmin(ok)
+      })
     return () => {
       cancelled = true
     }

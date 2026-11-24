@@ -1,5 +1,7 @@
-import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Suspense } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import ErrorBoundary from './components/ErrorBoundary'
+import { lazyRetry } from './lib/lazyRetry'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import SectionPage from './pages/SectionPage'
@@ -9,13 +11,16 @@ import OrderPage from './pages/OrderPage'
 import NotFound from './pages/NotFound'
 
 // El panel y el login se descargan solo cuando alguien entra a ellos: los clientes no los cargan.
-const LoginPage = lazy(() => import('./pages/LoginPage'))
-const AdminPage = lazy(() => import('./pages/AdminPage'))
+const LoginPage = lazyRetry(() => import('./pages/LoginPage'))
+const AdminPage = lazyRetry(() => import('./pages/AdminPage'))
 
 const fallback = <p className="text-sm text-muted">Cargando...</p>
 
 export default function App() {
+  const { pathname } = useLocation()
+  // El aviso de error se reinicia al cambiar de pantalla.
   return (
+    <ErrorBoundary key={pathname}>
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
@@ -28,5 +33,6 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
+    </ErrorBoundary>
   )
 }
