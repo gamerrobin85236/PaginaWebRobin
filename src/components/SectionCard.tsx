@@ -9,9 +9,9 @@ interface SectionCardProps {
 }
 
 // Imagen de portada por tipo de categoría (en gris + capa verde, para mantener el tono de la tienda).
-const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string }>> = {
+const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string; whole?: boolean }>> = {
   digital: { src: '/banners/consolas.webp', w: 1088, h: 606, pos: 'object-center' },
-  subscription: { src: '/banners/suscripciones.webp', w: 1200, h: 480, pos: 'object-center' },
+  subscription: { src: '/banners/suscripciones.webp', w: 1200, h: 480, pos: 'object-center', whole: true },
   physical: { src: '/banners/controles.webp', w: 1000, h: 571, pos: 'object-center' },
 }
 
@@ -35,6 +35,17 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
         ) : banner ? (
           // Imagen de consolas en tono verde de la tienda, que se funde hacia abajo con la tarjeta.
           <>
+            {banner.whole && (
+              // En pantallas anchas la imagen se muestra completa (logos sin cortar); los costados se rellenan con ella misma difuminada.
+              <img
+                src={banner.src}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                decoding="async"
+                className="hidden sm:block absolute inset-0 w-full h-full object-cover grayscale blur-xl scale-125 opacity-80"
+              />
+            )}
             <img
               src={banner.src}
               alt=""
@@ -43,7 +54,7 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
               height={banner.h}
               loading="lazy"
               decoding="async"
-              className={`absolute inset-0 w-full h-full object-cover ${banner.pos} grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500`}
+              className={`absolute inset-0 w-full h-full object-cover ${banner.whole ? 'sm:object-contain' : ''} ${banner.pos} grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500`}
             />
             <div className="absolute inset-0 bg-primary/70 mix-blend-color" />
             <div className="absolute inset-0 bg-primary/10 mix-blend-soft-light" />
