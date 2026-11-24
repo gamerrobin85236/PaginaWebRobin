@@ -5,6 +5,8 @@ import { useCartContext } from '../hooks/CartContext'
 import ProductImage from './ProductImage'
 import { useScrollLock } from '../hooks/useScrollLock'
 import OnlineCheckout from './OnlineCheckout'
+import CouponBox from './CouponBox'
+import { useCoupon } from '../hooks/useCoupon'
 import { formatPrice } from '../utils/formatPrice'
 import { buildCartWhatsAppMessage, buildWhatsAppLink } from '../utils/whatsapp'
 
@@ -16,6 +18,7 @@ const ACCOUNT_LABEL: Record<AccountType, string> = {
 export default function CartDrawer() {
   const { open, setOpen, items, total, updateQuantity, removeItem } = useCartContext()
   useScrollLock(open)
+  const cp = useCoupon(items)
   if (!open) return null
 
   const close = () => setOpen(false)
@@ -25,7 +28,7 @@ export default function CartDrawer() {
   const whatsappOk = items.every((i) => !isOnlineOnly(i.product))
   const conflict = !onlineOk && !whatsappOk // mezcla de "solo en la página" con "solo por WhatsApp"
   const whatsappLink =
-    items.length > 0 ? buildWhatsAppLink(buildCartWhatsAppMessage(items, total)) : '#'
+    items.length > 0 ? buildWhatsAppLink(buildCartWhatsAppMessage(items, total, cp.coupon)) : '#'
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -107,9 +110,22 @@ export default function CartDrawer() {
 
         {items.length > 0 && (
           <div className="border-t border-line px-5 pt-5 pb-safe shrink-0">
+            <CouponBox coupon={cp.coupon} error={cp.error} busy={cp.busy} onApply={cp.apply} onClear={cp.clear} />
+            {cp.coupon && (
+              <div className="flex items-center justify-between mb-1 text-sm text-muted">
+                <span>Subtotal</span>
+                <span>{formatPrice(total)}</span>
+              </div>
+            )}
+            {cp.coupon && (
+              <div className="flex items-center justify-between mb-2 text-sm text-primary">
+                <span>Descuento</span>
+                <span>−{formatPrice(cp.coupon.discount)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-4">
-              <span className="text-muted text-sm">Total aproximado</span>
-              <span className="text-lg font-display font-bold">{formatPrice(total)}</span>
+              <span className="text-muted text-sm">{cp.coupon ? 'Total' : 'Total aproximado'}</span>
+              <span className="text-lg font-display font-bold">{formatPrice(total - (cp.coupon?.discount ?? 0))}</span>
             </div>
             {conflict && (
               <p className="text-xs rounded-lg border border-amber-400/60 text-amber-400 px-3 py-2">
@@ -117,7 +133,7 @@ export default function CartDrawer() {
                 Compra cada grupo por separado: quita unos productos y vuelve a intentar.
               </p>
             )}
-            {onlineOk && <OnlineCheckout items={items} />}
+            {onlineOk && <OnlineCheckout items={items} coupon={cp.coupon} />}
             {whatsappOk && !conflict && (
               <>
                 <a

@@ -2,6 +2,7 @@
 // Solo atiende direcciones /api/*. Aquí viven los secretos (Wompi y Supabase): NUNCA se envían al navegador.
 //
 //   POST /api/checkout        crea el pedido (precios calculados AQUÍ, no por el navegador) y devuelve el enlace de pago
+//   POST /api/coupon          valida un código de descuento contra el carrito
 //   POST /api/wompi-webhook   Wompi avisa el resultado del pago; se verifica su firma y se entrega el pedido
 //   GET  /api/order           el cliente consulta su pedido con su código privado
 
@@ -88,6 +89,15 @@ interface ProductRow {
   fulfillment: string | null
 }
 
+interface CouponResult {
+  ok: boolean
+  error?: string
+  code?: string
+  kind?: string
+  value?: number
+  discount?: number
+}
+
 interface OrderLine {
   product_id: string
   product_name: string
@@ -98,40 +108,13 @@ interface OrderLine {
   unit_price: number
 }
 
-async function handleCheckout(request: Request, env: Env, url: URL): Promise<Response> {
-  if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
-  // Solo se acepta desde la propia página (evita que otros sitios disparen pedidos).
-  if (request.headers.get('Origin') !== url.origin) return json({ error: 'Origen no permitido.' }, 403)
-  if (!env.WOMPI_PUBLIC_KEY || !env.WOMPI_INTEGRITY_SECRET || !env.SUPABASE_SERVICE_KEY) {
-    return json({ error: 'El pago en línea todavía no está disponible. Puedes comprar por WhatsApp.' }, 503)
-  }
-
-  const raw = await readBody(request, 20_000)
-  if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
-  let body: { items?: unknown; customer?: { shipping?: Record<string, unknown>; name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
-  try {
-    body = JSON.parse(raw)
-  } catch {
-    return json({ error: 'Solicitud inválida.' }, 400)
-  }
-
-  // --- datos del cliente
-  const name = String(body.customer?.name ?? '').trim()
-  const email = String(body.customer?.email ?? '').trim().toLowerCase()
-  const phone = String(body.customer?.phone ?? '').replace(/[^\d+]/g, '')
-  if (name.length < 2 || name.length > 80) return json({ error: 'Escribe tu nombre.' }, 400)
-  if (email.length > 254 || !EMAIL_RE.test(email)) return json({ error: 'El correo no es válido.' }, 400)
-  // El correo se escribe dos veces: ahí llegan las credenciales y un error significaría perderlas.
-  const emailConfirm = String(body.customer?.emailConfirm ?? '').trim().toLowerCase()
-  if (emailConfirm !== email) return json({ error: 'Los dos correos no coinciden. Revísalos.' }, 400)
-  if (phone.replace(/\D/g, '').length < 7 || phone.length > 16) return json({ error: 'El celular no es válido.' }, 400)
-
-  // --- productos pedidos
-  if (!Array.isArray(body.items) || body.items.length === 0 || body.items.length > 20) {
+/** Precios y disponibilidad SIEMPRE desde la base de datos. Devuelve las líneas del pedido o una respuesta de error. */
+async function priceCart(env: Env, rawItems: unknown): Promise<{ lines: OrderLine[]; needsShipping: boolean } | Response> {
+  if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > 20) {
     return json({ error: 'Tu carrito está vacío.' }, 400)
   }
   const wanted: { productId: string; accountType: string; optionLabel: string; quantity: number }[] = []
-  for (const it of body.items as Record<string, unknown>[]) {
+  for (const it of rawItems as Record<string, unknown>[]) {
     const productId = String(it.productId ?? '')
     const quantity = Number(it.quantity)
     if (!UUID_RE.test(productId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
@@ -206,6 +189,41 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
       unit_price: unit,
     })
   }
+  return { lines, needsShipping }
+}
+
+async function handleCheckout(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
+  // Solo se acepta desde la propia página (evita que otros sitios disparen pedidos).
+  if (request.headers.get('Origin') !== url.origin) return json({ error: 'Origen no permitido.' }, 403)
+  if (!env.WOMPI_PUBLIC_KEY || !env.WOMPI_INTEGRITY_SECRET || !env.SUPABASE_SERVICE_KEY) {
+    return json({ error: 'El pago en línea todavía no está disponible. Puedes comprar por WhatsApp.' }, 503)
+  }
+
+  const raw = await readBody(request, 20_000)
+  if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
+  let body: { items?: unknown; coupon?: unknown; customer?: { shipping?: Record<string, unknown>; name?: unknown; email?: unknown; emailConfirm?: unknown; phone?: unknown } }
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return json({ error: 'Solicitud inválida.' }, 400)
+  }
+
+  // --- datos del cliente
+  const name = String(body.customer?.name ?? '').trim()
+  const email = String(body.customer?.email ?? '').trim().toLowerCase()
+  const phone = String(body.customer?.phone ?? '').replace(/[^\d+]/g, '')
+  if (name.length < 2 || name.length > 80) return json({ error: 'Escribe tu nombre.' }, 400)
+  if (email.length > 254 || !EMAIL_RE.test(email)) return json({ error: 'El correo no es válido.' }, 400)
+  // El correo se escribe dos veces: ahí llegan las credenciales y un error significaría perderlas.
+  const emailConfirm = String(body.customer?.emailConfirm ?? '').trim().toLowerCase()
+  if (emailConfirm !== email) return json({ error: 'Los dos correos no coinciden. Revísalos.' }, 400)
+  if (phone.replace(/\D/g, '').length < 7 || phone.length > 16) return json({ error: 'El celular no es válido.' }, 400)
+
+  // --- productos pedidos
+  const priced = await priceCart(env, body.items)
+  if (priced instanceof Response) return priced
+  const { lines, needsShipping } = priced
 
   // --- datos de envío (solo si hay productos físicos o consolas)
   let shipping: { document: string; department: string; city: string; address: string; notes: string } | null = null
@@ -225,7 +243,18 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
     if (shipping.address.length < 6) return json({ error: 'Escribe la dirección completa del envío.' }, 400)
   }
 
-  const total = lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0)
+  const subtotal = lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0)
+  // Cupón: se vuelve a validar aquí; el descuento nunca lo decide el navegador.
+  let couponCode: string | null = null
+  let discount = 0
+  const couponText = String(body.coupon ?? '').trim()
+  if (couponText) {
+    const v = await rpc<CouponResult>(env, 'validate_coupon', { p_code: couponText.slice(0, 40), p_subtotal: subtotal })
+    if (!v.ok) return json({ error: v.error ?? 'El código no es válido.' }, 400)
+    couponCode = v.code ?? null
+    discount = Number(v.discount ?? 0)
+  }
+  const total = subtotal - discount
   const amountInCents = Math.round(total * 100)
   const reference = `GR-${randomHex(8).toUpperCase()}`
   const token = randomHex(24) // 48 caracteres: es la "llave" privada para ver el pedido
@@ -238,6 +267,8 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
     p_token: token,
     p_items: lines,
     p_shipping: shipping,
+    p_coupon: couponCode,
+    p_discount: discount,
   })
 
   // Firma de integridad de Wompi: SHA-256 de  referencia + monto en centavos + moneda + secreto
@@ -253,6 +284,30 @@ async function handleCheckout(request: Request, env: Env, url: URL): Promise<Res
     'customer-data:full-name': name,
   })
   return json({ checkoutUrl: `${WOMPI_CHECKOUT}?${params.toString()}` })
+}
+
+// ---------------------------------------------------------------- POST /api/coupon
+// Revisa un código contra el carrito y dice cuánto descuenta (el pedido lo vuelve a validar).
+async function handleCoupon(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== 'POST') return json({ error: 'Método no permitido.' }, 405)
+  if (request.headers.get('Origin') !== url.origin) return json({ error: 'Origen no permitido.' }, 403)
+  if (!env.SUPABASE_SERVICE_KEY) return json({ error: 'Los códigos no están disponibles todavía.' }, 503)
+  const raw = await readBody(request, 20_000)
+  if (raw === null) return json({ error: 'Solicitud demasiado grande.' }, 413)
+  let body: { items?: unknown; code?: unknown }
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    return json({ error: 'Solicitud inválida.' }, 400)
+  }
+  const code = String(body.code ?? '').trim()
+  if (code.length < 3 || code.length > 40) return json({ error: 'Escribe tu código de descuento.' }, 400)
+  const priced = await priceCart(env, body.items)
+  if (priced instanceof Response) return priced
+  const subtotal = priced.lines.reduce((sum, l) => sum + l.unit_price * l.quantity, 0)
+  const v = await rpc<CouponResult>(env, 'validate_coupon', { p_code: code, p_subtotal: subtotal })
+  if (!v.ok) return json({ error: v.error ?? 'El código no es válido.' }, 400)
+  return json({ code: v.code, kind: v.kind, value: v.value, discount: v.discount })
 }
 
 // ---------------------------------------------------------------- POST /api/wompi-webhook
@@ -587,6 +642,7 @@ export default {
     const url = new URL(request.url)
     try {
       if (url.pathname === '/api/checkout') return await handleCheckout(request, env, url)
+      if (url.pathname === '/api/coupon') return await handleCoupon(request, env, url)
       if (url.pathname === '/api/wompi-webhook') return await handleWebhook(request, env)
       if (url.pathname === '/api/order') return await handleOrder(request, env, url)
       if (url.pathname === '/api/test-email') return await handleTestEmail(request, env, url)

@@ -32,6 +32,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
 export async function createCheckout(
   items: CartItem[],
   customer: Customer,
+  coupon?: string,
 ): Promise<{ checkoutUrl: string } | { error: string }> {
   try {
     const res = await fetch('/api/checkout', {
@@ -39,6 +40,7 @@ export async function createCheckout(
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         customer,
+        coupon: coupon || undefined,
         items: items.map((i) => ({
           productId: i.product.id,
           accountType: i.accountType,
@@ -87,5 +89,43 @@ export async function fetchOrder(ref: string, token: string): Promise<{ order: O
     return { error: typeof data.error === 'string' ? data.error : 'No encontramos este pedido.' }
   } catch {
     return { error: 'No hay conexión. Revisa tu internet.' }
+  }
+}
+
+export interface AppliedCoupon {
+  code: string
+  discount: number
+  kind: 'percent' | 'fixed'
+  value: number
+}
+
+/** Pregunta al servidor si el código sirve para este carrito y cuánto descuenta. */
+export async function checkCoupon(items: CartItem[], code: string): Promise<AppliedCoupon | { error: string }> {
+  try {
+    const res = await fetch('/api/coupon', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        code,
+        items: items.map((i) => ({
+          productId: i.product.id,
+          accountType: i.accountType,
+          optionLabel: i.option?.label,
+          quantity: i.quantity,
+        })),
+      }),
+    })
+    const data = await readJson(res)
+    if (res.ok && typeof data.code === 'string') {
+      return {
+        code: data.code,
+        discount: Number(data.discount) || 0,
+        kind: data.kind === 'fixed' ? 'fixed' : 'percent',
+        value: Number(data.value) || 0,
+      }
+    }
+    return { error: typeof data.error === 'string' ? data.error : 'No pudimos revisar el código. Intenta de nuevo.' }
+  } catch {
+    return { error: 'No hay conexión. Revisa tu internet e intenta de nuevo.' }
   }
 }

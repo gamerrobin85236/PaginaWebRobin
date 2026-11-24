@@ -177,6 +177,12 @@ export default function OrdersAdmin({ productIds, title = 'Pedidos', physical = 
               ))}
             </ul>
 
+            {o.couponCode && (
+              <p className="text-xs text-primary">
+                🏷️ Código {o.couponCode} · descuento de {formatPrice(o.discount)}
+              </p>
+            )}
+
             {o.shipping && (
               <div className="rounded-lg border border-line bg-bg p-3 text-sm">
                 <p className="text-xs font-semibold text-primary mb-1">📦 Datos de envío</p>

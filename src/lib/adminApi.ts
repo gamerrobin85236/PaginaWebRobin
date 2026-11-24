@@ -15,6 +15,8 @@ function friendly(error: { code?: string; message: string }): string {
       ? 'Falta ejecutar migracion_variantes.sql en Supabase.'
       : /allow_whatsapp/.test(error.message)
       ? 'Falta ejecutar migracion_solo_linea.sql en Supabase.'
+      : /coupon/.test(error.message)
+      ? 'Falta ejecutar migracion_cupones.sql en Supabase.'
       : 'Falta actualizar la base de datos (migracion_tipos.sql en Supabase).'
   return error.message
 }
@@ -304,6 +306,8 @@ export interface AdminOrder {
   createdAt: string
   shipping?: { document: string; department: string; city: string; address: string; notes: string }
   tracking: string
+  couponCode: string
+  discount: number
   items: { id: string; productId: string | null; name: string; option?: string; accountType?: string; quantity: number; fulfillment: string }[]
 }
 
@@ -323,6 +327,8 @@ interface OrderRow {
   shipping_address: string | null
   shipping_notes: string | null
   tracking: string | null
+  coupon_code?: string | null
+  discount?: number | string | null
   order_items: {
     id: string
     product_id: string | null
@@ -352,6 +358,8 @@ export async function fetchOrders(): Promise<AdminOrder[]> {
     notes: o.notes ?? '',
     createdAt: o.created_at,
     tracking: o.tracking ?? '',
+    couponCode: o.coupon_code ?? '',
+    discount: Number(o.discount ?? 0),
     shipping: o.shipping_address
       ? {
           document: o.customer_document ?? '',
@@ -459,4 +467,92 @@ export async function sendTestEmail(to: string): Promise<string | null> {
   } catch {
     return 'No hay conexión. Revisa tu internet.'
   }
+}
+
+
+// ---------- Cupones de descuento ----------
+export interface Coupon {
+  id: string
+  code: string
+  kind: 'percent' | 'fixed'
+  value: number
+  minTotal: number
+  maxUses: number | null
+  expiresAt: string | null
+  active: boolean
+  note: string
+  uses: number
+}
+
+export interface CouponInput {
+  code: string
+  kind: 'percent' | 'fixed'
+  value: number
+  minTotal: number
+  maxUses: number | null
+  expiresAt: string | null
+  note: string
+}
+
+interface CouponRow {
+  id: string
+  code: string
+  kind: 'percent' | 'fixed'
+  value: number | string
+  min_total: number | string
+  max_uses: number | null
+  expires_at: string | null
+  active: boolean
+  note: string
+}
+
+function couponError(error: { code?: string; message: string }): string {
+  if (error.code === '23505') return 'Ya existe un código con ese nombre.'
+  if (error.code === '42P01' || /coupons/.test(error.message)) return 'Falta ejecutar migracion_cupones.sql en Supabase.'
+  return friendly(error)
+}
+
+export async function fetchCoupons(): Promise<Coupon[]> {
+  const { data, error } = await db().from('coupons').select('*').order('created_at', { ascending: false })
+  if (error) throw new Error(couponError(error))
+  const uses = new Map<string, number>()
+  const r = await db().rpc('admin_coupon_uses')
+  if (!r.error) for (const u of (r.data ?? []) as { code: string; uses: number }[]) uses.set(u.code, u.uses)
+  return (data as CouponRow[]).map((c) => ({
+    id: c.id,
+    code: c.code,
+    kind: c.kind,
+    value: Number(c.value),
+    minTotal: Number(c.min_total),
+    maxUses: c.max_uses,
+    expiresAt: c.expires_at,
+    active: c.active,
+    note: c.note ?? '',
+    uses: uses.get(c.code) ?? 0,
+  }))
+}
+
+export async function createCoupon(input: CouponInput): Promise<string | null> {
+  const { error } = await db()
+    .from('coupons')
+    .insert({
+      code: input.code.trim().toUpperCase(),
+      kind: input.kind,
+      value: input.value,
+      min_total: input.minTotal,
+      max_uses: input.maxUses,
+      expires_at: input.expiresAt,
+      note: input.note.trim(),
+    })
+  return error ? couponError(error) : null
+}
+
+export async function setCouponActive(id: string, active: boolean): Promise<string | null> {
+  const { error } = await db().from('coupons').update({ active }).eq('id', id)
+  return error ? couponError(error) : null
+}
+
+export async function deleteCoupon(id: string): Promise<string | null> {
+  const { error } = await db().from('coupons').delete().eq('id', id)
+  return error ? couponError(error) : null
 }

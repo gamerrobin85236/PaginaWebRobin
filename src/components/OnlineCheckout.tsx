@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { CreditCard, X } from 'lucide-react'
 import { getUnitPrice, lineKey, type CartItem } from '../hooks/useCart'
 import { formatPrice } from '../utils/formatPrice'
-import { createCheckout, needsShipping, type Customer, type Shipping } from '../lib/checkoutApi'
+import { createCheckout, needsShipping, type AppliedCoupon, type Customer, type Shipping } from '../lib/checkoutApi'
 import { DEPARTMENTS } from '../lib/departments'
 
 const inputCls =
@@ -33,10 +33,11 @@ function loadCustomer(): Customer {
   return { name: '', email: '', emailConfirm: '', phone: '' }
 }
 
-export default function OnlineCheckout({ items }: { items: CartItem[] }) {
+export default function OnlineCheckout({ items, coupon }: { items: CartItem[]; coupon?: AppliedCoupon | null }) {
   const hasAuto = items.some((i) => i.product.fulfillment === 'auto')
   const ships = needsShipping(items)
-  const total = items.reduce((sum, i) => sum + getUnitPrice(i) * i.quantity, 0)
+  const subtotal = items.reduce((sum, i) => sum + getUnitPrice(i) * i.quantity, 0)
+  const total = subtotal - (coupon?.discount ?? 0)
   const [ship, setShip] = useState(loadShipping)
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(loadCustomer)
@@ -71,7 +72,7 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
     } catch {
       /* no pasa nada */
     }
-    const result = await createCheckout(items, ships ? { ...form, shipping: ship } : form)
+    const result = await createCheckout(items, ships ? { ...form, shipping: ship } : form, coupon?.code)
     if ('error' in result) {
       setBusy(false)
       return setError(result.error)
@@ -192,7 +193,13 @@ export default function OnlineCheckout({ items }: { items: CartItem[] }) {
                     </li>
                   ))}
                 </ul>
-                <div className="flex justify-between border-t border-line mt-2 pt-2 font-semibold">
+                {coupon && (
+                  <div className="flex justify-between border-t border-line mt-2 pt-2 text-primary">
+                    <span>Código {coupon.code}</span>
+                    <span>−{formatPrice(coupon.discount)}</span>
+                  </div>
+                )}
+                <div className={`flex justify-between border-t border-line pt-2 font-semibold ${coupon ? 'mt-0' : 'mt-2'}`}>
                   <span>Total</span>
                   <span className="text-primary">{formatPrice(total)}</span>
                 </div>

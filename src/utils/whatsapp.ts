@@ -37,7 +37,11 @@ export function buildProductWhatsAppMessage(
   )}. ${product.stock !== undefined ? '¿Está disponible y hacen envío a mi ciudad?' : '¿Está disponible?'}`
 }
 
-export function buildCartWhatsAppMessage(items: CartItem[], total: number): string {
+export function buildCartWhatsAppMessage(
+  items: CartItem[],
+  total: number,
+  coupon?: { code: string; discount: number } | null,
+): string {
   const lines = items.map(
     (item) =>
       `- ${item.product.name}${describe(item.product, item.accountType, item.option)} x${item.quantity} — ${formatPrice(
@@ -46,5 +50,7 @@ export function buildCartWhatsAppMessage(items: CartItem[], total: number): stri
   )
   const ships = items.some((i) => i.product.stock !== undefined)
   const shipping = ships ? '\n\nDatos para el envío:\nNombre:\nCédula:\nCiudad y departamento:\nDirección:' : ''
-  return `Hola, quiero comprar:\n${lines.join('\n')}\n\nTotal aproximado: ${formatPrice(total)}${shipping}`
+  return `Hola, quiero comprar:\n${lines.join('\n')}\n\n${
+    coupon ? `Código de descuento: ${coupon.code} (−${formatPrice(coupon.discount)})\n` : ''
+  }Total aproximado: ${formatPrice(total - (coupon?.discount ?? 0))}${shipping}`
 }

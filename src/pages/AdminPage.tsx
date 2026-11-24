@@ -4,13 +4,14 @@ import { LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { checkIsAdmin } from '../lib/adminApi'
 import AdminDashboard from '../components/admin/AdminDashboard'
+import CouponsAdmin from '../components/admin/CouponsAdmin'
 import EmailAdmin from '../components/admin/EmailAdmin'
 import SectionManager from '../components/admin/SectionManager'
 import type { Section } from '../lib/types'
 
 const IDLE_MS = 10 * 60 * 1000 // cierre de sesión por inactividad
 
-type Tab = 'categories' | 'email'
+type Tab = 'categories' | 'coupons' | 'email'
 
 export default function AdminPage() {
   const { session, isAuthenticated, loading, signOut } = useAuth()
@@ -96,12 +97,17 @@ export default function AdminPage() {
         >
           Mis categorías
         </button>
+        <button className={tabCls('coupons')} onClick={() => setTab('coupons')}>
+          Cupones
+        </button>
         <button className={tabCls('email')} onClick={() => setTab('email')}>
           Correo al cliente
         </button>
       </div>
       {tab === 'email' ? (
         <EmailAdmin />
+      ) : tab === 'coupons' ? (
+        <CouponsAdmin />
       ) : managing ? (
         <SectionManager section={managing} onBack={() => setManaging(null)} />
       ) : (
