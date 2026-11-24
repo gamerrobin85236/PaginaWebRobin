@@ -6,7 +6,8 @@ const FLAG = 'gr_chunk_reload'
  * Como `lazy`, pero si la descarga de la pantalla falla (internet lento, o la página se actualizó
  * mientras estaba abierta) reintenta y, como último recurso, recarga la página una sola vez.
  */
-export function lazyRetry<T extends ComponentType<never>>(load: () => Promise<{ default: T }>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function lazyRetry<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
   return lazy(async () => {
     let lastError: unknown
     for (let attempt = 0; attempt < 3; attempt++) {
