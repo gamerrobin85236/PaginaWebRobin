@@ -173,7 +173,7 @@ insert into public.sections (slug, name, description, icon, position) values
   ('fisicos-y-consolas', 'Físicos y consolas', 'Juegos físicos, consolas y accesorios con envío a todo el país.', 'disc', 2),
   ('ps-plus-game-pass', 'PS Plus y Game Pass', 'Suscripciones para jugar online y acceder a catálogos de juegos.', 'crown', 3),
   ('combos-streaming', 'Combos streaming', 'Cuentas de plataformas de series y películas.', 'tv', 4),
-  ('ofertas-relampago', 'Ofertas relámpago', 'Promociones por tiempo limitado.', 'zap', 5)
+  ('gift-cards', 'Gift cards', 'Saldo para Xbox, Nintendo eShop y más.', 'gift', 5)
 on conflict (slug) do nothing;
 
 -- =====================================================================
