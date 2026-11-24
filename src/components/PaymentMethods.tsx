@@ -1,12 +1,13 @@
 import { Lock } from 'lucide-react'
 
-// Logos en public/pagos/ (PNG con fondo transparente).
+// Logos en public/pagos/ (PNG con fondo transparente). La altura de cada uno se ajusta
+// para que todos se vean del mismo peso visual (los más anchos más bajos, los cuadrados más altos).
 const METHODS = [
-  { name: 'Nequi', file: 'nequi', w: 514, h: 120 },
-  { name: 'Daviplata', file: 'daviplata', w: 298, h: 160 },
-  { name: 'PSE', file: 'pse', w: 159, h: 160 },
-  { name: 'Visa', file: 'visa', w: 393, h: 120 },
-  { name: 'Mastercard', file: 'mastercard', w: 267, h: 160 },
+  { name: 'Nequi', file: 'nequi', w: 514, h: 120, cls: 'h-5 sm:h-6' },
+  { name: 'Daviplata', file: 'daviplata', w: 298, h: 160, cls: 'h-8 sm:h-9' },
+  { name: 'PSE', file: 'pse', w: 159, h: 160, cls: 'h-8 sm:h-9' },
+  { name: 'Visa', file: 'visa', w: 393, h: 120, cls: 'h-5 sm:h-6' },
+  { name: 'Mastercard', file: 'mastercard', w: 267, h: 160, cls: 'h-8 sm:h-9' },
 ] as const
 
 export default function PaymentMethods() {
@@ -16,13 +17,10 @@ export default function PaymentMethods() {
         <Lock className="w-3.5 h-3.5 text-primary" />
         Paga seguro con
       </p>
-      <ul className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+      {/* Una sola franja clara con todos los logos: así se ven con sus colores reales sobre el fondo oscuro */}
+      <ul className="mx-auto w-fit max-w-full flex flex-wrap items-center justify-center gap-x-6 gap-y-3 sm:gap-x-8 rounded-2xl bg-slate-100 px-5 py-3.5 sm:px-8 sm:py-4 shadow-lg shadow-black/30">
         {METHODS.map((m) => (
-          <li
-            key={m.file}
-            title={m.name}
-            className="h-12 w-[6.25rem] sm:h-14 sm:w-28 rounded-xl bg-white shadow-sm shadow-black/30 grid place-items-center px-3"
-          >
+          <li key={m.file} title={m.name} className="flex items-center">
             <img
               src={`/pagos/${m.file}.png`}
               alt={m.name}
@@ -30,7 +28,7 @@ export default function PaymentMethods() {
               height={m.h}
               loading="lazy"
               decoding="async"
-              className="max-h-7 sm:max-h-8 max-w-full w-auto h-auto object-contain"
+              className={`${m.cls} w-auto object-contain`}
             />
           </li>
         ))}
