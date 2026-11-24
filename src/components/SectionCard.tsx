@@ -11,6 +11,7 @@ interface SectionCardProps {
 // Imagen de portada por tipo de categoría (en gris + capa verde, para mantener el tono de la tienda).
 const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string }>> = {
   digital: { src: '/banners/consolas.webp', w: 1088, h: 606, pos: 'object-center' },
+  subscription: { src: '/banners/suscripciones.webp', w: 1200, h: 480, pos: 'object-center' },
   physical: { src: '/banners/controles.webp', w: 1000, h: 571, pos: 'object-center' },
 }
 
