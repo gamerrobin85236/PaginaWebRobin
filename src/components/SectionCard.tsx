@@ -8,8 +8,15 @@ interface SectionCardProps {
   productCount: number
 }
 
+// Imagen de portada por tipo de categoría (en gris + capa verde, para mantener el tono de la tienda).
+const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string }>> = {
+  digital: { src: '/banners/consolas.webp', w: 1088, h: 606, pos: 'object-center' },
+  physical: { src: '/banners/retro.webp', w: 1120, h: 1200, pos: 'object-[50%_48%]' },
+}
+
 export default function SectionCard({ section, productCount }: SectionCardProps) {
   const Icon = sectionIcon(section.icon)
+  const banner = BANNERS[section.kind]
 
   return (
     <Link
@@ -24,18 +31,18 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-        ) : section.kind === 'digital' ? (
+        ) : banner ? (
           // Imagen de consolas en tono verde de la tienda, que se funde hacia abajo con la tarjeta.
           <>
             <img
-              src="/banners/consolas.webp"
+              src={banner.src}
               alt=""
               aria-hidden="true"
-              width={1088}
-              height={606}
+              width={banner.w}
+              height={banner.h}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500"
+              className={`absolute inset-0 w-full h-full object-cover ${banner.pos} grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500`}
             />
             <div className="absolute inset-0 bg-primary/70 mix-blend-color" />
             <div className="absolute inset-0 bg-primary/10 mix-blend-soft-light" />
