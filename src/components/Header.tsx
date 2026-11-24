@@ -55,8 +55,9 @@ export default function Header({ onOpenMenu }: HeaderProps) {
             alt={STORE_CONFIG.name}
             className="w-10 h-10 rounded-lg object-cover"
           />
-          <span className="hidden sm:block font-display font-bold text-lg leading-none">
-            {STORE_CONFIG.name}
+          <span className="hidden min-[380px]:flex flex-col gap-1">
+            <span className="font-display font-bold text-lg leading-none">{STORE_CONFIG.name}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-primary leading-none">Tienda online</span>
           </span>
         </Link>
 
