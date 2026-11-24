@@ -35,10 +35,11 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
               height={606}
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 w-full h-full object-cover grayscale contrast-125 opacity-70 blur-[1.5px] scale-105 group-hover:scale-110 transition-transform duration-500"
+              className="absolute inset-0 w-full h-full object-cover grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-primary/40 mix-blend-color" />
-            <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
+            <div className="absolute inset-0 bg-primary/70 mix-blend-color" />
+            <div className="absolute inset-0 bg-primary/10 mix-blend-soft-light" />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface/90 via-transparent to-transparent" />
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
