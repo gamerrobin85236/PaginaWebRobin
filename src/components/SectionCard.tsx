@@ -9,15 +9,20 @@ interface SectionCardProps {
 }
 
 // Imagen de portada por tipo de categoría (en gris + capa verde, para mantener el tono de la tienda).
-const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string; whole?: boolean }>> = {
+const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: number; pos: string; whole?: 'sm' | 'all' }>> = {
   digital: { src: '/banners/consolas.webp', w: 1088, h: 606, pos: 'object-center' },
-  subscription: { src: '/banners/suscripciones.webp', w: 1200, h: 480, pos: 'object-center', whole: true },
+  subscription: { src: '/banners/suscripciones.webp', w: 1200, h: 480, pos: 'object-center', whole: 'sm' },
   physical: { src: '/banners/controles.webp', w: 1000, h: 571, pos: 'object-center' },
+}
+
+// Por nombre de categoría (tiene prioridad sobre el tipo): "Combos streaming" usa su propia imagen.
+const BANNERS_BY_SLUG: Record<string, NonNullable<(typeof BANNERS)[Section['kind']]>> = {
+  'combos-streaming': { src: '/banners/streaming.webp', w: 1200, h: 675, pos: 'object-center', whole: 'all' },
 }
 
 export default function SectionCard({ section, productCount }: SectionCardProps) {
   const Icon = sectionIcon(section.icon)
-  const banner = BANNERS[section.kind]
+  const banner = BANNERS_BY_SLUG[section.slug] ?? BANNERS[section.kind]
 
   return (
     <Link
@@ -43,7 +48,7 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
                 aria-hidden="true"
                 loading="lazy"
                 decoding="async"
-                className="hidden sm:block absolute inset-0 w-full h-full object-cover grayscale blur-xl scale-125 opacity-80"
+                className={`${banner.whole === 'all' ? '' : 'hidden sm:block '}absolute inset-0 w-full h-full object-cover grayscale blur-xl scale-125 opacity-80`}
               />
             )}
             <img
@@ -54,7 +59,7 @@ export default function SectionCard({ section, productCount }: SectionCardProps)
               height={banner.h}
               loading="lazy"
               decoding="async"
-              className={`absolute inset-0 w-full h-full object-cover ${banner.whole ? 'sm:object-contain' : ''} ${banner.pos} grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500`}
+              className={`absolute inset-0 w-full h-full object-cover ${banner.whole === 'all' ? 'object-contain' : banner.whole ? 'sm:object-contain' : ''} ${banner.pos} grayscale contrast-110 brightness-110 group-hover:scale-105 transition-transform duration-500`}
             />
             <div className="absolute inset-0 bg-primary/70 mix-blend-color" />
             <div className="absolute inset-0 bg-primary/10 mix-blend-soft-light" />
