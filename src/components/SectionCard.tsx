@@ -17,6 +17,7 @@ const BANNERS: Partial<Record<Section['kind'], { src: string; w: number; h: numb
 
 // Por nombre de categoría (tiene prioridad sobre el tipo): "Combos streaming" usa su propia imagen.
 const BANNERS_BY_SLUG: Record<string, NonNullable<(typeof BANNERS)[Section['kind']]>> = {
+  'gift-cards': { src: '/banners/giftcards.webp', w: 1348, h: 546, pos: 'object-center', whole: 'all' },
   'combos-streaming': { src: '/banners/streaming.webp', w: 1200, h: 675, pos: 'object-center', whole: 'all' },
 }
 
